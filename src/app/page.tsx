@@ -51,7 +51,7 @@ const roleDescriptions: Record<Role, string> = {
 
 export default function HomePage() {
   const { theme, toggle } = useTheme();
-  const { projects, analytics, loading, live, error, reload } = useProjects();
+  const { projects, analytics, loading, live, recordCount, error, reload } = useProjects();
   const [role, setRole] = useState<Role>('auditor');
   const [query, setQuery] = useState('');
   const [anomaly, setAnomaly] = useState<'All Types' | AnomalyType>('All Types');
@@ -83,7 +83,7 @@ export default function HomePage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-cyan-500 shadow-lg shadow-indigo-600/25"><Radar className="text-white" size={21} /></div>
             <div><div className="text-[16px] font-bold tracking-tight">MPLAD <span className="text-indigo-500">Radar</span></div><div className="hidden text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:block">MoSPI Vigilance & Transparency Layer</div></div>
           </div>
-          <div className="ml-4 hidden items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-50 px-3 py-1.5 md:flex dark:bg-emerald-500/10"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative h-2 w-2 rounded-full bg-emerald-500" /></span><span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">{live ? `Live Supabase Dataset: ${projects.length.toLocaleString('en-IN')} Records` : 'Supabase connection required'}</span></div>
+          <div className="ml-4 hidden items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-50 px-3 py-1.5 md:flex dark:bg-emerald-500/10"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative h-2 w-2 rounded-full bg-emerald-500" /></span><span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">{live ? `Live Supabase Dataset: ${(recordCount || projects.length || 0).toLocaleString('en-IN')} Records` : 'Supabase connection required'}</span></div>
           <div className="ml-auto flex items-center gap-2">
             <button className="hidden rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 sm:block dark:hover:bg-white/10 dark:hover:text-white" aria-label="Notifications"><Bell size={18} /></button>
             <button onClick={toggle} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10" aria-label="Toggle theme">{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</button>

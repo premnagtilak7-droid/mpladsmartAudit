@@ -10,6 +10,7 @@ export interface ProjectsState {
   loading: boolean;
   error: string | null;
   live: boolean;
+  recordCount: number;
   reload: () => void;
 }
 
@@ -25,6 +26,7 @@ export function useProjects(): ProjectsState {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState(false);
+  const [recordCount, setRecordCount] = useState(0);
   const [tick, setTick] = useState(0);
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
@@ -40,6 +42,7 @@ export function useProjects(): ProjectsState {
       if (!supabase || !isSupabaseConfigured) {
         if (!cancelled) {
           setProjects([]);
+          setRecordCount(0);
           setError('NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured.');
           setLoading(false);
         }
@@ -47,20 +50,24 @@ export function useProjects(): ProjectsState {
       }
 
       try {
-        const { data, error: queryError } = await supabase
+        const { data, count, error: queryError } = await supabase
           .from('projects')
-          .select('*')
+          .select('*', { count: 'exact' })
+          .range(0, 12000)
           .order('risk_score', { ascending: false });
 
         if (queryError) throw queryError;
         if (cancelled) return;
 
-        setProjects((data ?? []).map(normalizeProject));
+        const rows = data ?? [];
+        setProjects(rows.map(normalizeProject));
+        setRecordCount(count ?? rows.length);
         setLive(true);
         setLoading(false);
       } catch (cause) {
         if (cancelled) return;
         setProjects([]);
+        setRecordCount(0);
         setLive(false);
         setError(cause instanceof Error ? cause.message : 'Unable to query Supabase projects.');
         setLoading(false);
@@ -74,7 +81,7 @@ export function useProjects(): ProjectsState {
   }, [tick]);
 
   const analytics = useMemo(() => computeLiveAnalytics(projects), [projects]);
-  return { projects, analytics, loading, error, live, reload };
+  return { projects, analytics, loading, error, live, recordCount, reload };
 }
 
 function normalizeProject(row: SupabaseProjectRow, index: number): Project {
