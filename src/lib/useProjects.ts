@@ -50,18 +50,11 @@ export function useProjects(): ProjectsState {
       }
 
       try {
-        const { data, count, error: queryError } = await supabase
-          .from('projects')
-          .select('*', { count: 'exact' })
-          .range(0, 12000)
-          .order('risk_score', { ascending: false });
-
-        if (queryError) throw queryError;
+        const rows = await fetchAllProjects();
         if (cancelled) return;
 
-        const rows = data ?? [];
         setProjects(rows.map(normalizeProject));
-        setRecordCount(count ?? rows.length);
+        setRecordCount(rows.length);
         setLive(true);
         setLoading(false);
       } catch (cause) {
@@ -82,6 +75,31 @@ export function useProjects(): ProjectsState {
 
   const analytics = useMemo(() => computeLiveAnalytics(projects), [projects]);
   return { projects, analytics, loading, error, live, recordCount, reload };
+}
+
+async function fetchAllProjects(): Promise<SupabaseProjectRow[]> {
+  if (!supabase) return [];
+
+  const allData: SupabaseProjectRow[] = [];
+  let page = 0;
+  const pageSize = 1000;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .order('risk_score', { ascending: false })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+
+    allData.push(...(data as SupabaseProjectRow[]));
+    if (data.length < pageSize) break;
+    page += 1;
+  }
+
+  return allData;
 }
 
 function normalizeProject(row: SupabaseProjectRow, index: number): Project {
