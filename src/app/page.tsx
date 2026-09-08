@@ -62,7 +62,7 @@ export default function HomePage() {
 
   const filteredProjects = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return projects
+    return [...projects]
       .filter((p) => anomaly === 'All Types' || p.anomaly_type === anomaly)
       .filter((p) => !needle || [p.work, p.vendor_name, p.constituency, p.mp].some((v) => v?.toLowerCase().includes(needle)))
       .sort((a, b) => sortDesc ? (b.risk_score ?? 0) - (a.risk_score ?? 0) : (a.risk_score ?? 0) - (b.risk_score ?? 0));
@@ -83,7 +83,7 @@ export default function HomePage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-cyan-500 shadow-lg shadow-indigo-600/25"><Radar className="text-white" size={21} /></div>
             <div><div className="text-[16px] font-bold tracking-tight">MPLAD <span className="text-indigo-500">Radar</span></div><div className="hidden text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:block">MoSPI Vigilance & Transparency Layer</div></div>
           </div>
-          <div className="ml-4 hidden items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-50 px-3 py-1.5 md:flex dark:bg-emerald-500/10"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative h-2 w-2 rounded-full bg-emerald-500" /></span><span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">{live ? `Supabase DB: Connected (${projects.length ? '11,005' : '0'} Records)` : `Preview Dataset: ${projects.length.toLocaleString('en-IN')} Records`}</span></div>
+          <div className="ml-4 hidden items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-50 px-3 py-1.5 md:flex dark:bg-emerald-500/10"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative h-2 w-2 rounded-full bg-emerald-500" /></span><span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">{live ? `Live Supabase Dataset: ${projects.length.toLocaleString('en-IN')} Records` : 'Supabase connection required'}</span></div>
           <div className="ml-auto flex items-center gap-2">
             <button className="hidden rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 sm:block dark:hover:bg-white/10 dark:hover:text-white" aria-label="Notifications"><Bell size={18} /></button>
             <button onClick={toggle} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10" aria-label="Toggle theme">{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</button>
@@ -105,7 +105,7 @@ export default function HomePage() {
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-[1250px]">
             <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-500"><Zap size={13} /> Live command center</div><h2 className="text-2xl font-bold tracking-tight sm:text-3xl">MPLAD audit overview</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Monitor public works, surface anomalies, and act before funds move.</p></div><button onClick={reload} className="inline-flex w-fit items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm hover:border-indigo-300 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300"><RefreshCw size={14} /> Refresh data</button></div>
-            {error && <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-300/30 bg-amber-50 px-4 py-3 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><AlertTriangle size={15} /> Supabase unavailable — showing the resilient preview dataset. <span className="truncate opacity-70">{error}</span></div>}
+            {error && <div className="mb-5 flex items-center gap-2 rounded-xl border border-amber-300/30 bg-amber-50 px-4 py-3 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><AlertTriangle size={15} /> Supabase unavailable — no live records loaded. <span className="truncate opacity-70">{error}</span></div>}
             <AnalyticsGrid analytics={analytics} loading={loading} />
             {role !== 'auditor' ? <RoleView role={role} projects={filteredProjects} /> : <>
               <section className="mt-7 grid gap-5 lg:grid-cols-[1fr_280px]">
