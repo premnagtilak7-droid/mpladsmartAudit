@@ -24,7 +24,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = window.localStorage.getItem('mplad-theme');
-    setThemeState(stored === 'light' ? 'light' : 'dark');
+    if (stored === 'light' || stored === 'dark') {
+      setThemeState(stored);
+    } else {
+      setThemeState(window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    }
   }, []);
 
   useEffect(() => {

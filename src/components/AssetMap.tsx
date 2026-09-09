@@ -1,12 +1,33 @@
 'use client';
 
-import { CircleMarker, MapContainer, Popup, TileLayer } from 'react-leaflet';
+import { Circle, CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet';
 import type { LatLngExpression } from 'leaflet';
+import L from 'leaflet';
+import { useEffect } from 'react';
+import 'leaflet.heat';
 import type { Project } from '@/lib/types';
 
 export type MapAsset = Project & { mapLat: number; mapLng: number };
+type MapMode = 'pins' | 'heatmap';
 
-export default function AssetMap({ assets, onSelect }: { assets: MapAsset[]; onSelect: (asset: Project) => void }) {
+type LeafletWithHeat = typeof L & {
+  heatLayer: (points: Array<[number, number, number]>, options?: Record<string, unknown>) => L.Layer;
+};
+
+function HeatLayer({ assets }: { assets: MapAsset[] }) {
+  const map = useMap();
+  useEffect(() => {
+    const leaflet = L as LeafletWithHeat;
+    const layer = leaflet.heatLayer(
+      assets.map((asset) => [asset.mapLat, asset.mapLng, Math.max(0.35, Math.min(1, (asset.risk_score || 20) / 100))]),
+      { radius: 30, blur: 22, maxZoom: 10, gradient: { 0.25: '#22c55e', 0.55: '#f59e0b', 0.85: '#ef4444' } },
+    ).addTo(map);
+    return () => { map.removeLayer(layer); };
+  }, [assets, map]);
+  return null;
+}
+
+export default function AssetMap({ assets, onSelect, mode = 'pins' }: { assets: MapAsset[]; onSelect: (asset: Project) => void; mode?: MapMode }) {
   const center: LatLngExpression = [22.5, 79];
   return (
     <MapContainer center={center} zoom={5} scrollWheelZoom className="h-[410px] w-full bg-[#0b132b]">
@@ -14,27 +35,27 @@ export default function AssetMap({ assets, onSelect }: { assets: MapAsset[]; onS
         attribution="&copy; OpenStreetMap contributors &copy; CARTO"
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
       />
-      {assets.map((asset) => {
+      {mode === 'heatmap' && <HeatLayer assets={assets} />}
+      {mode === 'pins' && assets.map((asset) => {
         const completed = /completed|success/i.test(`${asset.status || ''} ${asset.payment_status || ''}`);
+        const highRisk = (asset.risk_score || 0) >= 80 || asset.anomaly_type === 'Duplicate Location';
+        const color = highRisk ? '#ef4444' : completed ? '#22c55e' : '#f59e0b';
         return (
-          <CircleMarker
-            key={asset.id}
-            center={[asset.mapLat, asset.mapLng]}
-            radius={completed ? 7 : 6}
-            pathOptions={{
-              color: completed ? '#22c55e' : '#f59e0b',
-              fillColor: completed ? '#22c55e' : '#f59e0b',
-              fillOpacity: 0.9,
-              weight: 2,
-            }}
-            eventHandlers={{ click: () => onSelect(asset) }}
-          >
-            <Popup>
-              <strong>{asset.work || 'MPLAD work'}</strong><br />
-              {asset.work_id || `MPLAD-${asset.id}`}<br />
-              {completed ? 'Completed' : 'In Progress'}
-            </Popup>
-          </CircleMarker>
+          <span key={asset.id}>
+            {highRisk && <Circle center={[asset.mapLat, asset.mapLng]} radius={50} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.12, weight: 1, dashArray: '4 4' }} />}
+            <CircleMarker
+              center={[asset.mapLat, asset.mapLng]}
+              radius={highRisk ? 8 : completed ? 7 : 6}
+              pathOptions={{ color, fillColor: color, fillOpacity: 0.9, weight: 2, className: highRisk ? 'mplad-risk-pulse' : undefined }}
+              eventHandlers={{ click: () => onSelect(asset) }}
+            >
+              <Popup>
+                <strong>{asset.work || 'MPLAD work'}</strong><br />
+                {asset.work_id || `MPLAD-${asset.id}`}<br />
+                {highRisk ? 'High-risk / duplicate-location' : completed ? 'Completed' : 'In Progress'}
+              </Popup>
+            </CircleMarker>
+          </span>
         );
       })}
     </MapContainer>

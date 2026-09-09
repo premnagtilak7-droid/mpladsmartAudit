@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import type { AuditResponse, Project } from '@/lib/types';
 import { formatCrores, formatINR } from '@/lib/format';
+import { useLang } from '@/lib/i18n/LangContext';
 import type { MapAsset } from './AssetMap';
 
 const AssetMap = dynamic(() => import('./AssetMap'), { ssr: false, loading: () => <div className="grid h-[410px] place-items-center bg-[#0d1b35] text-xs text-slate-400">Loading OpenStreetMap…</div> });
@@ -73,13 +74,20 @@ function Panel({ children, className = '' }: { children: React.ReactNode; classN
   return <section className={`rounded-2xl border border-[#334155] bg-[#1e293b]/75 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl ${className}`}>{children}</section>;
 }
 
+function makePortalCopy(translate: (key: any) => string) {
+  return {
+    citizen: translate('citizen'), authority: translate('authority'), nearby: translate('nearby'), locate: translate('locate'), completed: translate('completed'), inProgress: translate('inProgress'), verify: translate('verify'), feedback: translate('feedback'), submit: translate('submit'), openData: translate('openData'), download: translate('download'), authorityTitle: translate('authorityTitle'), validator: translate('validator'), run: translate('run'), compliant: translate('compliant'), warning: translate('warning'), pipeline: translate('pipeline'), report: translate('report'), generate: translate('generate'), funds: translate('funds'), proofs: translate('proofs'), upload: translate('upload'), title: translate('title'), vendor: translate('vendor'), location: translate('location'), budget: translate('budget'),
+  };
+}
+
 function Button({ children, onClick, variant = 'primary', type = 'button' }: { children: React.ReactNode; onClick?: () => void; variant?: 'primary' | 'secondary' | 'danger'; type?: 'button' | 'submit' }) {
   const styles = variant === 'danger' ? 'bg-rose-600 hover:bg-rose-500' : variant === 'secondary' ? 'border border-[#475569] bg-[#0f172a] text-slate-200 hover:border-indigo-400' : 'bg-indigo-600 text-white hover:bg-indigo-500';
   return <button type={type} onClick={onClick} className={`inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition ${styles}`}>{children}</button>;
 }
 
 export function CitizenPortal({ projects, language, verifyId }: { projects: Project[]; language: PortalLanguage; verifyId?: string }) {
-  const t = copy[language];
+  const { t: translate } = useLang();
+  const t = makePortalCopy(translate);
   const [selected, setSelected] = useState<Project | null>(null);
   const [located, setLocated] = useState(false);
   const [qrProject, setQrProject] = useState<Project | null>(null);
@@ -128,7 +136,8 @@ function FeedbackModal({ project, sent, onClose, onSent, language }: { project: 
 }
 
 export function AuthorityWorkspace({ projects, language }: { projects: Project[]; language: PortalLanguage }) {
-  const t = copy[language]; const [form, setForm] = useState({ title: '', vendor: '', location: '', budget: '' }); const [audit, setAudit] = useState<AuditResponse | null>(null); const [validating, setValidating] = useState(false); const [report, setReport] = useState(false); const [proofOpen, setProofOpen] = useState(false);
+  const { t: translate } = useLang();
+  const t = makePortalCopy(translate); const [form, setForm] = useState({ title: '', vendor: '', location: '', budget: '' }); const [audit, setAudit] = useState<AuditResponse | null>(null); const [validating, setValidating] = useState(false); const [report, setReport] = useState(false); const [proofOpen, setProofOpen] = useState(false);
   const completed = projects.filter((p) => /completed|success/i.test(`${p.status || ''} ${p.payment_status || ''}`)).length;
   const runValidation = async () => { setValidating(true); setAudit(null); const lower = `${form.title} ${form.vendor} ${form.location}`.toLowerCase(); const syntheticRisk = /statue|religious|private|vehicle|furniture|generator/.test(lower) || Number(form.budget) > 490000; try { const response = await fetch('/api/audit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project: { id: 0, sr_no: 'proposal', state: null, work: form.title, work_id: `PRE-${Date.now()}`, ida: null, mp: null, constituency: form.location, expenditure_date: null, vendor_name: form.vendor, payment_status: 'Proposed', amount: Number(form.budget) || 0, risk_score: syntheticRisk ? 88 : 18, anomaly_type: syntheticRisk ? 'Prohibited Asset' : 'Normal' } }) }); const result = await response.json() as AuditResponse; setAudit({ ...result, risk_score: syntheticRisk ? Math.max(88, result.risk_score) : Math.min(35, result.risk_score) }); } catch { setAudit({ violation_category: syntheticRisk ? 'Prohibited Asset' : 'Split Tendering', risk_score: syntheticRisk ? 92 : 18, audit_summary: ['Pre-submission checks completed using Section 3 and Section 4 controls.'], recommended_action: syntheticRisk ? 'Hold filing and review vendor, asset class, and threshold.' : 'Proceed to district sanction and e-submission.', generated_at: new Date().toISOString() }); } finally { setValidating(false); } };
   const verdictGood = audit && audit.risk_score < 50;

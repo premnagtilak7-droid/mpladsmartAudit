@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { LangProvider } from '@/lib/i18n/LangContext';
 
 export const metadata: Metadata = {
   title: 'MPLAD Radar | AI-Powered Anomaly & Audit Portal (SIH26102)',
@@ -25,7 +26,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
-        <ThemeProvider>{children}</ThemeProvider>
+        <LangProvider>
+          <ThemeProvider>{children}</ThemeProvider>
+        </LangProvider>
       </body>
     </html>
   );

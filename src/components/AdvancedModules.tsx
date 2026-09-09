@@ -1,10 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
+import dynamic from 'next/dynamic';
+import { useMemo, useState } from 'react';
 import { MapPin, ShieldCheck, TriangleAlert, Printer, X, LockKeyhole, FileWarning } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatINR } from '@/lib/format';
 import type { Project } from '@/lib/types';
+import type { MapAsset } from '@/components/AssetMap';
+
+const AssetMap = dynamic(() => import('@/components/AssetMap'), { ssr: false, loading: () => <div className="grid min-h-[540px] place-items-center bg-[#0f172a] text-xs text-slate-400">Loading GIS map…</div> });
 
 export function ComplianceWidget({ projects }: { projects: Project[] }) {
   const compliance = useMemo(() => {
@@ -25,13 +29,17 @@ function ComplianceBar({ label, target, actual }: { label: string; target: numbe
 function isConstituency(project: Project, category: 'SC' | 'ST') { const text = `${project.constituency || ''} ${project.state || ''}`.toUpperCase(); return new RegExp(`(?:\\(|\\s|-)${category}(?:\\)|\\s|$)`).test(text); }
 
 export function GISMapView({ projects, onInspect }: { projects: Project[]; onInspect: (project: Project) => void }) {
-  const flagged = projects.filter((p) => (p.risk_score ?? 0) >= 80).slice(0, 40);
-  return <div className="relative min-h-[540px] overflow-hidden bg-[#0f172a]">
-    <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'linear-gradient(30deg, transparent 48%, rgba(71,104,128,.22) 49%, transparent 51%), linear-gradient(120deg, transparent 48%, rgba(71,104,128,.18) 49%, transparent 51%), linear-gradient(rgba(255,255,255,.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.55) 1px, transparent 1px)', backgroundSize: '140px 110px, 180px 140px, 42px 42px, 42px 42px' }} />
-    <div className="absolute left-5 top-5 z-10 rounded-xl border border-[#334155] bg-[#1e293b]/85 px-3 py-2 text-[11px] font-bold text-slate-200 shadow-lg backdrop-blur"><MapPin size={14} className="mr-1 inline text-rose-500" /> High-risk anomaly clusters</div>
-    {flagged.map((project, index) => { const left = 14 + ((index * 37) % 72); const top = 19 + ((index * 53) % 62); return <button key={project.id} onClick={() => onInspect(project)} className="group absolute z-10" style={{ left: `${left}%`, top: `${top}%` }} title={project.work || 'Flagged project'}><span className="absolute -inset-4 animate-ping rounded-full bg-rose-400/25" /><span className="relative flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-rose-500 text-white shadow-lg shadow-rose-500/40"><MapPin size={14} fill="currentColor" /></span><span className="pointer-events-none absolute left-8 top-0 hidden min-w-44 rounded-lg bg-slate-950 px-2 py-1 text-left text-[10px] text-white group-hover:block">{project.constituency || 'Unknown district'}<br /><b>Risk {project.risk_score ?? 0}</b></span></button>; })}
-    {flagged.length > 1 && <><span className="absolute left-[28%] top-[38%] h-28 w-28 rounded-full border-2 border-dashed border-rose-500/60 bg-rose-500/10" /><span className="absolute left-[31%] top-[43%] h-20 w-20 rounded-full border-2 border-dashed border-rose-500/50" /></>}
-    <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-center gap-4 rounded-xl border border-white/70 bg-white/85 px-3 py-2 text-[10px] font-semibold text-slate-600 shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-900/80 dark:text-slate-300"><span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-rose-500" />Red pin: flagged project</span><span><i className="mr-1 inline-block h-2 w-2 rounded-full border border-rose-500" />Cluster radius &lt; 50m</span><span className="ml-auto">{flagged.length} plotted records</span></div>
+  const [mode, setMode] = useState<'pins' | 'heatmap'>('pins');
+  const assets = useMemo<MapAsset[]>(() => projects.slice(0, 120).map((project, index) => ({
+    ...project,
+    mapLat: project.latitude ?? 8 + ((index * 17) % 25),
+    mapLng: project.longitude ?? 72 + ((index * 29) % 16),
+  })), [projects]);
+  const flagged = assets.filter((asset) => (asset.risk_score ?? 0) >= 80 || asset.anomaly_type === 'Duplicate Location').length;
+  return <div className="relative overflow-hidden bg-[#0f172a]">
+    <div className="absolute left-5 top-5 z-[500] flex items-center gap-2 rounded-xl border border-[#334155] bg-[#1e293b]/90 px-3 py-2 text-[11px] font-bold text-slate-200 shadow-lg backdrop-blur"><MapPin size={14} className="text-rose-400" /> High-risk GIS clusters <span className="text-rose-300">{flagged}</span><button onClick={() => setMode((current) => current === 'pins' ? 'heatmap' : 'pins')} className="ml-2 rounded-md border border-indigo-400/30 bg-indigo-500/15 px-2 py-1 text-[10px] text-indigo-100">{mode === 'pins' ? 'Heatmap' : 'Pins'}</button></div>
+    <AssetMap assets={assets} onSelect={onInspect} mode={mode} />
+    <div className="absolute bottom-4 left-4 right-4 z-[500] flex flex-wrap items-center gap-4 rounded-xl border border-[#334155] bg-[#0f172a]/90 px-3 py-2 text-[10px] font-semibold text-slate-300 shadow-lg backdrop-blur"><span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-400" />Completed</span><span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-amber-400" />In progress</span><span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-rose-500" />High-risk / duplicate</span><span className="ml-auto">{assets.length} plotted records</span></div>
   </div>;
 }
 

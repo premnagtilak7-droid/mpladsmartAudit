@@ -14,8 +14,12 @@ import {
   LayoutDashboard,
   LockKeyhole,
   Map as MapIcon,
+  LayoutGrid,
+  LineChart,
   Menu,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   Radar,
   RefreshCw,
   Search,
@@ -36,6 +40,7 @@ import {
 } from 'recharts';
 import { useProjects } from '@/lib/useProjects';
 import { useTheme } from '@/components/ThemeProvider';
+import { useLang } from '@/lib/i18n/LangContext';
 import { formatCrores, formatINR } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import {
@@ -75,19 +80,14 @@ const defaultAnomalies: Array<'All Types' | AnomalyType> = [
 ];
 
 type PortalRole = 'central' | 'citizen' | 'authority';
-const centralCopy = {
-  en: { workspace: 'Audit workspace', overview: 'Audit overview', anomalies: 'Anomaly queue', intelligence: 'Fund intelligence', notes: 'Official notes', refresh: 'Refresh data', import: 'Import New MoSPI Dataset', command: 'Dark command center' },
-  hi: { workspace: 'ऑडिट कार्यक्षेत्र', overview: 'ऑडिट अवलोकन', anomalies: 'विसंगति कतार', intelligence: 'फंड इंटेलिजेंस', notes: 'आधिकारिक नोट्स', refresh: 'डेटा रीफ्रेश करें', import: 'नया MoSPI डेटा आयात करें', command: 'डार्क कमांड सेंटर' },
-  mr: { workspace: 'ऑडिट कार्यक्षेत्र', overview: 'ऑडिट आढावा', anomalies: 'विसंगती रांग', intelligence: 'फंड इंटेलिजन्स', notes: 'अधिकृत नोंदी', refresh: 'डेटा रिफ्रेश करा', import: 'नवीन MoSPI डेटासेट आयात करा', command: 'डार्क कमांड सेंटर' },
-} as const;
 
 export default function MpladRadarDashboard() {
   const { projects, loading, error, live, recordCount, reload } = useProjects();
   const { theme, toggle } = useTheme();
+  const { lang: language, setLang, t } = useLang();
   const [role, setRole] = useState<PortalRole>('central');
-  const [language, setLanguage] = useState<PortalLanguage>('en');
   const [verifyId, setVerifyId] = useState('');
-  const ui = centralCopy[language];
+  const ui = { workspace: t('workspace'), overview: t('overview'), anomalies: t('anomalies'), intelligence: t('intelligence'), notes: t('notes'), refresh: t('refresh'), import: t('import'), command: t('command') };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -98,6 +98,7 @@ export default function MpladRadarDashboard() {
 
   const [activeTab, setActiveTab] = useState<'overview' | 'anomalies' | 'intelligence' | 'notes'>('overview');
   const [mobileNav, setMobileNav] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [query, setQuery] = useState('');
   const [stateFilter, setStateFilter] = useState('All States');
@@ -161,11 +162,17 @@ export default function MpladRadarDashboard() {
     [scopedProjects],
   );
 
-  const riskChartData = useMemo(() => [
-    { name: 'High risk', value: 5, displayValue: Math.log10(6), label: '5', fill: '#ff174f', glow: 'drop-shadow(0 0 8px rgba(255,23,79,.8))' },
-    { name: 'Medium', value: 0, displayValue: 0, label: '0', fill: '#ffc857', glow: 'drop-shadow(0 0 8px rgba(255,200,87,.75))' },
-    { name: 'Normal', value: 11000, displayValue: Math.log10(11001), label: '11,000', fill: '#10e981', glow: 'drop-shadow(0 0 8px rgba(16,233,129,.75))' },
-  ], []);
+  const riskChartData = useMemo(() => {
+    const high = scopedProjects.filter((p) => (p.risk_score || 0) >= 80).length;
+    const medium = scopedProjects.filter((p) => (p.risk_score || 0) >= 50 && (p.risk_score || 0) < 80).length;
+    const normal = Math.max(0, scopedProjects.length - high - medium);
+    const total = Math.max(1, scopedProjects.length);
+    return [
+      { name: 'High risk', value: high, percent: (high / total) * 100, displayValue: high ? Math.log10(high + 1) : 0, label: high.toLocaleString('en-IN'), fill: '#ff174f', glow: 'drop-shadow(0 0 8px rgba(255,23,79,.8))' },
+      { name: 'Medium', value: medium, percent: (medium / total) * 100, displayValue: medium ? Math.log10(medium + 1) : 0, label: medium.toLocaleString('en-IN'), fill: '#ffc857', glow: 'drop-shadow(0 0 8px rgba(255,200,87,.75))' },
+      { name: 'Normal', value: normal, percent: (normal / total) * 100, displayValue: normal ? Math.log10(normal + 1) : 0, label: normal.toLocaleString('en-IN'), fill: '#10e981', glow: 'drop-shadow(0 0 8px rgba(16,233,129,.75))' },
+    ];
+  }, [scopedProjects]);
 
   const freezeProject = (project: Project) => {
     const time = new Date().toLocaleString('en-IN');
@@ -214,7 +221,7 @@ export default function MpladRadarDashboard() {
               <option value="citizen">Public Citizen Portal</option>
               <option value="authority">MP &amp; District Authority Workspace</option>
             </select>
-            <select value={language} onChange={(event) => setLanguage(event.target.value as PortalLanguage)} aria-label="Select language" className="rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-2 text-[10px] font-black text-slate-200 outline-none">
+            <select value={language} onChange={(event) => setLang(event.target.value as PortalLanguage)} aria-label="Select language" className="rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-2 text-[10px] font-black text-slate-200 outline-none">
               <option value="en">EN</option><option value="hi">हिन्दी</option><option value="mr">मराठी</option>
             </select>
             <button onClick={toggle} aria-label="Toggle light and dark theme" className="rounded-lg border border-[#334155] bg-[#1e293b]/70 p-2 text-slate-200 hover:border-indigo-400">
@@ -245,38 +252,48 @@ export default function MpladRadarDashboard() {
         <AuthorityWorkspace projects={projects} language={language} />
       ) : (
       <div className="mx-auto flex max-w-[1600px]">
-          <aside className={`${mobileNav ? 'fixed inset-y-16 left-0 z-30 flex' : 'hidden'} w-64 shrink-0 flex-col border-r border-[#334155]/70 bg-[#0f172a]/95 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl lg:sticky lg:top-16 lg:flex lg:h-[calc(100vh-4rem)]`}>
-          <div className="mb-3 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">{ui.workspace}</div>
+          <aside className={`${mobileNav ? 'fixed inset-y-16 left-0 z-30 flex' : 'hidden'} ${sidebarCollapsed ? 'w-20' : 'w-64'} shrink-0 flex-col border-r border-[#334155]/70 bg-[#0f172a]/95 p-3 shadow-2xl shadow-black/20 backdrop-blur-xl transition-[width] lg:sticky lg:top-16 lg:flex lg:h-[calc(100vh-4rem)]`}>
+          <div className={`mb-3 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} px-2`}>
+            {!sidebarCollapsed && <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">{ui.workspace}</span>}
+            <button onClick={() => setSidebarCollapsed((current) => !current)} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+              {sidebarCollapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+            </button>
+          </div>
           <nav className="space-y-1">
             <SideItem
               active={activeTab === 'overview'}
               onClick={() => setActiveTab('overview')}
-              icon={<LayoutDashboard size={16} />}
+              icon={<LayoutGrid size={16} />}
               label={ui.overview}
+              collapsed={sidebarCollapsed}
             />
             <SideItem
               active={activeTab === 'anomalies'}
               onClick={() => setActiveTab('anomalies')}
-              icon={<ShieldAlert size={16} />}
-              label={`${ui.anomalies} (${highRiskRows.length})`}
+              icon={<AlertTriangle size={16} />}
+              label={ui.anomalies}
+              badge={highRiskRows.length}
+              collapsed={sidebarCollapsed}
             />
             <SideItem
               active={activeTab === 'intelligence'}
               onClick={() => setActiveTab('intelligence')}
-              icon={<BarChart3 size={16} />}
+              icon={<LineChart size={16} />}
               label={ui.intelligence}
+              collapsed={sidebarCollapsed}
             />
             <SideItem
               active={activeTab === 'notes'}
               onClick={() => setActiveTab('notes')}
               icon={<FileText size={16} />}
               label={ui.notes}
+              collapsed={sidebarCollapsed}
             />
           </nav>
 
-          <div className="mt-auto rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-[11px] font-semibold text-emerald-300 shadow-[0_0_24px_rgba(16,233,129,0.06)]">
+          {!sidebarCollapsed && <div className="mt-auto rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-[11px] font-semibold text-emerald-300 shadow-[0_0_24px_rgba(16,233,129,0.06)]">
             {live ? `Live Supabase Dataset: ${(recordCount || projects.length).toLocaleString('en-IN')} records` : 'Supabase connection required'}
-          </div>
+          </div>}
         </aside>
 
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
@@ -314,7 +331,7 @@ export default function MpladRadarDashboard() {
                         <BarChart data={riskChartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                           <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                           <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} tickFormatter={() => ''} allowDecimals={false} />
-                          <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 10, color: '#e2e8f0', fontSize: 11 }} cursor={{ fill: 'rgba(99,102,241,0.08)' }} />
+                          <Tooltip content={<RiskTooltip />} cursor={{ fill: 'rgba(99,102,241,0.08)' }} />
                           <Bar dataKey="displayValue" radius={[6, 6, 0, 0]}>
                             <LabelList dataKey="label" position="top" fill="#f8fafc" fontSize={11} fontWeight={800} />
                             {riskChartData.map((item) => <Cell key={item.name} fill={item.fill} style={{ filter: item.glow }} />)}
@@ -445,23 +462,35 @@ function SideItem({
   label,
   icon,
   onClick,
+  collapsed = false,
+  badge,
 }: {
   active: boolean;
   label: string;
   icon: React.ReactNode;
   onClick: () => void;
+  collapsed?: boolean;
+  badge?: number;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold transition ${active
+      className={`relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold transition ${active
         ? 'border border-indigo-400/60 bg-gradient-to-r from-indigo-500/20 to-blue-500/10 text-indigo-100 shadow-[0_0_18px_rgba(99,102,241,0.28)]'
         : 'border border-transparent text-slate-400 hover:border-slate-600 hover:bg-white/5 hover:text-slate-100'}`}
     >
       {icon}
-      {label}
+      {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
+      {!collapsed && badge != null && <span className="ml-auto min-w-5 rounded-full bg-rose-500 px-1.5 py-0.5 text-center text-[9px] font-black text-white">{badge}</span>}
+      {collapsed && badge != null && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500" title={`${badge} high-risk anomalies`} />}
     </button>
   );
+}
+
+function RiskTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload?: { name: string; value: number; percent: number; fill: string } }> }) {
+  if (!active || !payload?.[0]?.payload) return null;
+  const item = payload[0].payload;
+  return <div className="rounded-lg border border-[#334155] bg-[#0f172a] px-3 py-2 text-[11px] text-slate-100 shadow-xl"><div className="font-bold" style={{ color: item.fill }}>{item.name}</div><div>{item.value.toLocaleString('en-IN')} records</div><div className="text-slate-400">{item.percent.toFixed(2)}% of total</div></div>;
 }
 
 function MospiKpiGrid({ loading }: { loading: boolean }) {
