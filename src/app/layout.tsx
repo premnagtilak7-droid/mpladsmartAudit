@@ -24,7 +24,7 @@ export default function RootLayout({
           href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Cpath d='M28 70 V52 M50 70 V38 M72 70 V56' stroke='white' stroke-width='9' stroke-linecap='round'/%3E%3Ccircle cx='50' cy='28' r='7' fill='%230ea5e9'/%3E%3C/svg%3E"
         />
       </head>
-      <body className="min-h-screen bg-[#0b132b] text-slate-100">
+      <body className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

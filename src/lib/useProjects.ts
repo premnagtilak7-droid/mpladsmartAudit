@@ -121,6 +121,8 @@ function normalizeProject(row: SupabaseProjectRow, index: number): Project {
     payment_status: textValue(row.payment_status ?? row['Payment Status'] ?? row.status ?? row.Status),
     status: textValue(row.status ?? row.Status ?? row.payment_status ?? row['Payment Status']),
     stage: textValue(row.stage ?? row.Stage ?? row.project_stage ?? row['Project Stage']),
+    latitude: numberValue(row.latitude ?? row.lat ?? row.Latitude ?? row.Lat),
+    longitude: numberValue(row.longitude ?? row.lng ?? row.Longitude ?? row.Lng),
     amount,
     risk_score: riskScore,
     anomaly_type: anomaly,

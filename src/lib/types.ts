@@ -48,6 +48,8 @@ export interface Project {
   /** Optional normalized status/stage fields present in newer MoSPI ingests. */
   status?: string | null;
   stage?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   /** "Fund Disbursed Amount ( ₹ )" */
   amount: number | null;
 

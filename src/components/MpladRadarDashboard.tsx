@@ -15,10 +15,12 @@ import {
   LockKeyhole,
   Map as MapIcon,
   Menu,
+  Moon,
   Radar,
   RefreshCw,
   Search,
   ShieldAlert,
+  Sun,
   Upload,
   X,
 } from 'lucide-react';
@@ -33,6 +35,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useProjects } from '@/lib/useProjects';
+import { useTheme } from '@/components/ThemeProvider';
 import { formatCrores, formatINR } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import {
@@ -80,6 +83,7 @@ const centralCopy = {
 
 export default function MpladRadarDashboard() {
   const { projects, loading, error, live, recordCount, reload } = useProjects();
+  const { theme, toggle } = useTheme();
   const [role, setRole] = useState<PortalRole>('central');
   const [language, setLanguage] = useState<PortalLanguage>('en');
   const [verifyId, setVerifyId] = useState('');
@@ -213,6 +217,9 @@ export default function MpladRadarDashboard() {
             <select value={language} onChange={(event) => setLanguage(event.target.value as PortalLanguage)} aria-label="Select language" className="rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-2 text-[10px] font-black text-slate-200 outline-none">
               <option value="en">EN</option><option value="hi">हिन्दी</option><option value="mr">मराठी</option>
             </select>
+            <button onClick={toggle} aria-label="Toggle light and dark theme" className="rounded-lg border border-[#334155] bg-[#1e293b]/70 p-2 text-slate-200 hover:border-indigo-400">
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
             <button
               onClick={reload}
               className="inline-flex items-center gap-2 rounded-lg border border-[#334155] bg-[#1e293b]/70 px-3 py-2 text-xs font-bold text-slate-200 shadow-lg shadow-black/10 transition hover:border-indigo-400/70 hover:bg-indigo-500/10"

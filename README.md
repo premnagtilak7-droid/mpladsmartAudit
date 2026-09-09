@@ -3,7 +3,7 @@
 ## Project Overview
 - **Name**: MPLAD Radar (SIH26102)
 - **Goal**: Production-grade MoSPI/MPLAD vigilance dashboard for monitoring recommended, sanctioned, ongoing, and completed works with AI-backed anomaly audit actions.
-- **Core Stack**: Next.js 14, React, TypeScript, Supabase, Recharts, Framer Motion, Gemini 1.5 Flash API
+- **Core Stack**: Next.js 14, React, TypeScript, Supabase, Recharts, Framer Motion, Leaflet / React Leaflet, Gemini 1.5 Flash API
 
 ## Currently Completed Features
 1. **Official MoSPI KPI Header (6-card national baseline)**
@@ -48,8 +48,9 @@
 
 6. **Dual Public / Authority Portal Architecture**
    - Header role switcher for Central Auditor, Public Citizen, and MP & District Authority views
-   - English, Hindi, and Marathi UI language selector
-   - Citizen near-me asset map, completed/in-progress markers, asset detail drawer, public QR verification, feedback form, satisfaction rating, and open-data CSV/PDF export controls
+   - English, Hindi, and Marathi UI language selector wired to portal and central labels
+   - Theme toggle with CSS variables for dark command-center and light accessibility modes
+   - Citizen near-me Leaflet/OpenStreetMap + CARTO dark tile map, live project markers, browser location activation, asset detail drawer, public QR verification, feedback form, satisfaction rating, and open-data CSV/PDF export controls
    - Authority pre-submission AI validator routed through `/api/audit`, with synthetic prohibited-asset and threshold warnings
    - Authority recommendation pipeline, entitlement/tranche tracker, constituency report card print modal, and field-proof upload drawer
 
@@ -141,7 +142,7 @@
 ## Features Not Yet Implemented
 - Server-side authenticated import, feedback, and field-proof endpoints with service-role key isolation
 - Persistent citizen feedback, QR registry, tranche proof, and official notes tables
-- Real latitude/longitude geospatial rendering (current portal map uses live records with deterministic visual placement and browser geolocation status)
+- Persistent latitude/longitude enrichment for rows that do not yet contain coordinates (the Leaflet map uses deterministic India-region fallback coordinates until source GPS columns are populated)
 - Automated server-side PDF file persistence/export pipeline (current exports use browser CSV download and print workflows)
 
 ## Recommended Next Steps
