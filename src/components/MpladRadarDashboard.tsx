@@ -15,12 +15,10 @@ import {
   LockKeyhole,
   Map as MapIcon,
   Menu,
-  Moon,
   Radar,
   RefreshCw,
   Search,
   ShieldAlert,
-  Sun,
   Upload,
   X,
 } from 'lucide-react';
@@ -35,7 +33,6 @@ import {
 } from 'recharts';
 import { useProjects } from '@/lib/useProjects';
 import { formatCrores, formatINR } from '@/lib/format';
-import { useTheme } from '@/components/ThemeProvider';
 import { supabase } from '@/lib/supabase';
 import {
   ComplianceWidget,
@@ -73,8 +70,7 @@ const defaultAnomalies: Array<'All Types' | AnomalyType> = [
 ];
 
 export default function MpladRadarDashboard() {
-  const { theme, toggle } = useTheme();
-  const { projects, analytics, loading, error, live, recordCount, reload } = useProjects();
+  const { projects, loading, error, live, recordCount, reload } = useProjects();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'anomalies' | 'intelligence' | 'notes'>('overview');
   const [mobileNav, setMobileNav] = useState(false);
@@ -141,16 +137,17 @@ export default function MpladRadarDashboard() {
     [scopedProjects],
   );
 
-  const mospiStatus = useMemo(() => computeMospiStatus(scopedProjects), [scopedProjects]);
+  // KPI cards always represent the complete ingested dataset, not the active table filters.
+  const mospiStatus = useMemo(() => computeMospiStatus(projects), [projects]);
 
   const riskChartData = useMemo(() => {
     const high = scopedProjects.filter((p) => (p.risk_score || 0) >= 80).length;
     const medium = scopedProjects.filter((p) => (p.risk_score || 0) >= 50 && (p.risk_score || 0) < 80).length;
     const low = Math.max(0, scopedProjects.length - high - medium);
     return [
-      { name: 'High risk', value: high, fill: '#fb7185' },
-      { name: 'Medium', value: medium, fill: '#fbbf24' },
-      { name: 'Normal', value: low, fill: '#34d399' },
+      { name: 'High risk', value: high, fill: '#ff174f', glow: 'drop-shadow(0 0 8px rgba(255,23,79,.8))' },
+      { name: 'Medium', value: medium, fill: '#ffc857', glow: 'drop-shadow(0 0 8px rgba(255,200,87,.75))' },
+      { name: 'Normal', value: low, fill: '#10e981', glow: 'drop-shadow(0 0 8px rgba(16,233,129,.75))' },
     ];
   }, [scopedProjects]);
 
@@ -173,12 +170,12 @@ export default function MpladRadarDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f7ff] text-slate-900 dark:bg-[#070c19] dark:text-slate-100">
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#070c19]/85">
+    <div className="min-h-screen bg-[#0b132b] text-slate-100 selection:bg-indigo-500/30">
+      <header className="sticky top-0 z-40 border-b border-[#334155]/70 bg-[#0b132b]/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-3 px-4 sm:px-6 lg:px-8">
           <button
             onClick={() => setMobileNav((s) => !s)}
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden dark:hover:bg-white/10"
+            className="rounded-lg p-2 text-slate-300 hover:bg-white/10 lg:hidden"
             aria-label="Toggle sidebar"
           >
             <Menu size={18} />
@@ -198,7 +195,7 @@ export default function MpladRadarDashboard() {
           <div className="ml-auto flex items-center gap-2">
             <button
               onClick={reload}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:border-indigo-300 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200"
+              className="inline-flex items-center gap-2 rounded-lg border border-[#334155] bg-[#1e293b]/70 px-3 py-2 text-xs font-bold text-slate-200 shadow-lg shadow-black/10 transition hover:border-indigo-400/70 hover:bg-indigo-500/10"
             >
               <RefreshCw size={14} /> Refresh data
             </button>
@@ -208,19 +205,15 @@ export default function MpladRadarDashboard() {
             >
               <Upload size={14} /> Import New MoSPI Dataset
             </button>
-            <button
-              onClick={toggle}
-              className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"
-              aria-label="Toggle theme"
-            >
-              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
+            <span className="hidden items-center gap-2 rounded-lg border border-indigo-400/30 bg-indigo-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-indigo-200 sm:inline-flex">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_10px_#10e981]" /> Dark command center
+            </span>
           </div>
         </div>
       </header>
 
       <div className="mx-auto flex max-w-[1600px]">
-        <aside className={`${mobileNav ? 'fixed inset-y-16 left-0 z-30 flex' : 'hidden'} w-64 shrink-0 flex-col border-r border-slate-200 bg-white p-4 lg:sticky lg:top-16 lg:flex lg:h-[calc(100vh-4rem)] dark:border-white/[0.08] dark:bg-[#0b1224]`}>
+          <aside className={`${mobileNav ? 'fixed inset-y-16 left-0 z-30 flex' : 'hidden'} w-64 shrink-0 flex-col border-r border-[#334155]/70 bg-[#0f172a]/95 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl lg:sticky lg:top-16 lg:flex lg:h-[calc(100vh-4rem)]`}>
           <div className="mb-3 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Audit workspace</div>
           <nav className="space-y-1">
             <SideItem
@@ -249,19 +242,19 @@ export default function MpladRadarDashboard() {
             />
           </nav>
 
-          <div className="mt-auto rounded-xl border border-emerald-300/20 bg-emerald-50 p-3 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+          <div className="mt-auto rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-[11px] font-semibold text-emerald-300 shadow-[0_0_24px_rgba(16,233,129,0.06)]">
             {live ? `Live Supabase Dataset: ${(recordCount || projects.length).toLocaleString('en-IN')} records` : 'Supabase connection required'}
           </div>
         </aside>
 
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-[1280px]">
-            <div className="mb-4 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
+            <div className="mb-4 rounded-xl border border-indigo-400/30 bg-indigo-500/10 px-4 py-3 text-sm font-bold text-indigo-100 shadow-[0_0_28px_rgba(99,102,241,0.12)] backdrop-blur-xl">
               Official MoSPI Scheme Expenditure Baseline: {MOSPI_BASELINE} (National Coverage)
             </div>
 
             {error && (
-              <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-300/30 bg-amber-50 px-4 py-3 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+              <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
                 <AlertTriangle size={14} /> {error}
               </div>
             )}
@@ -271,12 +264,12 @@ export default function MpladRadarDashboard() {
                 <MospiKpiGrid status={mospiStatus} loading={loading} />
                 <div className="grid gap-5 lg:grid-cols-2">
                   <ComplianceWidget projects={scopedProjects} />
-                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/[0.08] dark:bg-[#0f172a]">
+                  <div className="rounded-2xl border border-[#334155] bg-[#1e293b]/75 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
                     <div className="mb-3 flex items-center justify-between">
                       <div className="text-sm font-bold">Risk distribution</div>
                       <button
                         onClick={() => setViewMode((m) => (m === 'table' ? 'map' : 'table'))}
-                        className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2.5 py-1.5 text-[11px] font-bold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300"
+                        className="inline-flex items-center gap-1 rounded-md border border-indigo-400/30 bg-indigo-500/10 px-2.5 py-1.5 text-[11px] font-bold text-indigo-200 hover:bg-indigo-500/20"
                       >
                         <MapIcon size={12} /> GIS Map View
                       </button>
@@ -286,9 +279,9 @@ export default function MpladRadarDashboard() {
                         <BarChart data={riskChartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                           <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                           <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                          <Tooltip />
+                          <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 10, color: '#e2e8f0', fontSize: 11 }} cursor={{ fill: 'rgba(99,102,241,0.08)' }} />
                           <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                            {riskChartData.map((item) => <Cell key={item.name} fill={item.fill} />)}
+                            {riskChartData.map((item) => <Cell key={item.name} fill={item.fill} style={{ filter: item.glow }} />)}
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
@@ -297,8 +290,8 @@ export default function MpladRadarDashboard() {
                 </div>
 
                 {viewMode === 'map' ? (
-                  <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/[0.08] dark:bg-[#0f172a]">
-                    <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-white/[0.08]">
+                  <section className="overflow-hidden rounded-2xl border border-[#334155] bg-[#1e293b]/75 shadow-2xl shadow-black/20 backdrop-blur-xl">
+                    <div className="flex items-center justify-between border-b border-[#334155]/70 px-4 py-3">
                       <div className="text-sm font-bold">GIS high-risk cluster map (50m overlap)</div>
                       <button
                         onClick={() => setViewMode('table')}
@@ -310,7 +303,7 @@ export default function MpladRadarDashboard() {
                     <GISMapView projects={scopedProjects} onInspect={setSelected} />
                   </section>
                 ) : (
-                  <section className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-white/[0.08] dark:bg-[#0f172a]">
+                  <section className="rounded-2xl border border-[#334155] bg-[#1e293b]/75 shadow-2xl shadow-black/20 backdrop-blur-xl">
                     <TableFilters
                       query={query}
                       setQuery={setQuery}
@@ -425,8 +418,8 @@ function SideItem({
     <button
       onClick={onClick}
       className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold transition ${active
-        ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300'
-        : 'text-slate-500 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5'}`}
+        ? 'border border-indigo-400/60 bg-gradient-to-r from-indigo-500/20 to-blue-500/10 text-indigo-100 shadow-[0_0_18px_rgba(99,102,241,0.28)]'
+        : 'border border-transparent text-slate-400 hover:border-slate-600 hover:bg-white/5 hover:text-slate-100'}`}
     >
       {icon}
       {label}
@@ -452,14 +445,14 @@ function MospiKpiGrid({
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
       {cards.map((card) => (
-        <article key={card.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/[0.08] dark:bg-[#0f172a]">
+        <article key={card.label} className="group rounded-2xl border border-[#334155] bg-[#1e293b]/75 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-indigo-400/50 hover:shadow-indigo-950/40">
           <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{card.label}</div>
           {loading ? (
             <div className="space-y-2"><div className="shimmer h-6 w-24 rounded" /><div className="shimmer h-4 w-20 rounded" /></div>
           ) : (
             <>
-              <div className="text-lg font-black">{card.count.toLocaleString('en-IN')} {card.countLabel}</div>
-              <div className="text-xs font-semibold text-slate-500 dark:text-slate-300">{formatCrores(card.value)}</div>
+              <div className="text-lg font-black text-white">{card.count.toLocaleString('en-IN')} {card.countLabel}</div>
+              <div className="text-xs font-semibold text-slate-300">{formatCrores(card.value)}</div>
             </>
           )}
         </article>
@@ -480,33 +473,33 @@ function TableFilters(props: {
   setSortDesc: (value: boolean) => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 border-b border-slate-100 p-4 dark:border-white/[0.08] sm:flex-row sm:items-center">
+    <div className="flex flex-col gap-3 border-b border-[#334155]/70 p-4 sm:flex-row sm:items-center">
       <div className="relative flex-1">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
           value={props.query}
           onChange={(e) => props.setQuery(e.target.value)}
           placeholder="Search Work, Vendor, Constituency, MP"
-          className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-8 pr-3 text-xs outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-white/[0.04]"
+          className="w-full rounded-xl border border-[#334155] bg-[#0f172a] py-2.5 pl-8 pr-3 text-xs text-slate-100 outline-none placeholder:text-slate-500 focus:border-indigo-400"
         />
       </div>
       <select
         value={props.anomalyFilter}
         onChange={(e) => props.setAnomalyFilter(e.target.value as 'All Types' | AnomalyType)}
-        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold outline-none dark:border-white/10 dark:bg-white/[0.04]"
+        className="rounded-xl border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs font-semibold text-slate-100 outline-none focus:border-indigo-400"
       >
         {defaultAnomalies.map((option) => <option key={option}>{option}</option>)}
       </select>
       <select
         value={props.stateFilter}
         onChange={(e) => props.setStateFilter(e.target.value)}
-        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold outline-none dark:border-white/10 dark:bg-white/[0.04]"
+        className="rounded-xl border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs font-semibold text-slate-100 outline-none focus:border-indigo-400"
       >
         {props.states.map((state) => <option key={state}>{state}</option>)}
       </select>
       <button
         onClick={() => props.setSortDesc(!props.sortDesc)}
-        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold dark:border-white/10 dark:bg-white/[0.04]"
+        className="inline-flex items-center gap-2 rounded-xl border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs font-semibold text-slate-200 hover:border-indigo-400/60"
       >
         <ArrowLeftRight size={14} /> Risk {props.sortDesc ? 'High → Low' : 'Low → High'}
       </button>
@@ -534,7 +527,7 @@ function ProjectTable({
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[920px] text-left text-xs">
-        <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-400 dark:bg-white/[0.03]">
+        <thead className="bg-[#0f172a]/80 text-[10px] uppercase tracking-wider text-slate-400">
           <tr>
             <th className="px-4 py-3">Work</th>
             <th className="px-3 py-3">Vendor</th>
@@ -545,9 +538,9 @@ function ProjectTable({
             <th className="px-4 py-3">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-white/[0.08]">
+        <tbody className="divide-y divide-[#334155]/60">
           {projects.map((project) => (
-            <tr key={project.id} className="hover:bg-indigo-50/40 dark:hover:bg-indigo-500/[0.06]">
+            <tr key={project.id} className="hover:bg-indigo-500/[0.06]">
               <td className="px-4 py-3">
                 <div className="max-w-[260px] truncate font-bold" title={project.work || ''}>{project.work || 'Untitled work'}</div>
                 <div className="text-[10px] text-slate-400">{project.work_id || `MPLAD-${project.id}`}</div>
@@ -564,9 +557,9 @@ function ProjectTable({
               <td className="px-3 py-3"><RiskBadge score={project.risk_score || 0} /></td>
               <td className="px-4 py-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={() => onInspect(project)} className="rounded-md bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">Inspect</button>
+                  <button onClick={() => onInspect(project)} className="rounded-md border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-200">Inspect</button>
                   {lockedProjects[project.id] ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-1 text-[9px] font-black text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/30 bg-rose-500/15 px-2 py-1 text-[9px] font-black text-rose-200 shadow-[0_0_12px_rgba(244,63,94,0.18)]">
                       <LockKeyhole size={10} /> DISBURSEMENT LOCKED BY AUDITOR
                     </span>
                   ) : (
@@ -656,14 +649,14 @@ function AnomalyQueue({
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {lockedProjects[project.id] ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-1 text-[9px] font-black text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/30 bg-rose-500/15 px-2 py-1 text-[9px] font-black text-rose-200 shadow-[0_0_12px_rgba(244,63,94,0.18)]">
                     <LockKeyhole size={10} /> DISBURSEMENT LOCKED BY AUDITOR
                   </span>
                 ) : (
                   <button onClick={() => onFreeze(project)} className="rounded-md bg-rose-600 px-2 py-1 text-[10px] font-bold text-white">Freeze Disbursement</button>
                 )}
                 <button onClick={() => onGenerateMemo(project)} className="rounded-md bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white">Generate DM Memo PDF</button>
-                <button onClick={() => onInspect(project)} className="rounded-md bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">Inspect AI Evidence</button>
+                <button onClick={() => onInspect(project)} className="rounded-md border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-200">Inspect AI Evidence</button>
               </div>
             </div>
           </article>
@@ -743,7 +736,7 @@ function FundIntelligence({
                 <th className="pb-2">Flagged Fraud Count</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-white/[0.08]">
+            <tbody className="divide-y divide-[#334155]/60">
               {rows.map((row) => (
                 <tr key={row.state}>
                   <td className="py-3 font-semibold">{row.state}</td>
@@ -1030,17 +1023,17 @@ function computeMospiStatus(rows: Project[]) {
     summary.recommended.count += 1;
     summary.recommended.value += amount;
 
-    if (status !== 'pending') {
+    if (status === 'sanctioned' || status === 'approved') {
       summary.sanctioned.count += 1;
       summary.sanctioned.value += amount;
     }
 
-    if (status === 'in-progress' || status === 'ongoing') {
+    if (status === 'in-progress') {
       summary.ongoing.count += 1;
       summary.ongoing.value += amount;
     }
 
-    if (status === 'completed' || status === 'payment success') {
+    if (status === 'completed' || status === 'success') {
       summary.completed.count += 1;
       summary.completed.value += amount;
     }
@@ -1053,19 +1046,22 @@ function computeMospiStatus(rows: Project[]) {
 }
 
 function normalizeStatus(project: Project): string {
-  const raw = (project.payment_status || project.approval_status || '').toLowerCase().trim();
-  if (raw.includes('in-progress')) return 'in-progress';
-  if (raw.includes('ongoing')) return 'ongoing';
-  if (raw.includes('payment success')) return 'payment success';
-  if (raw.includes('completed')) return 'completed';
+  const raw = (project.status || project.stage || project.payment_status || project.approval_status || '').toLowerCase().trim();
+  if (raw.includes('in-progress') || raw.includes('in progress') || raw.includes('ongoing')) return 'in-progress';
+  if (raw.includes('sanction')) return 'sanctioned';
+  if (raw.includes('approved') || raw === 'approve') return 'approved';
+  if (raw.includes('success')) return 'success';
+  if (raw.includes('completed') || raw.includes('complete')) return 'completed';
   if (raw.includes('pending')) return 'pending';
   return raw || 'pending';
 }
 
 function statusLabel(project: Project): string {
   const status = normalizeStatus(project);
-  if (status === 'in-progress' || status === 'ongoing') return 'In-Progress';
-  if (status === 'completed' || status === 'payment success') return 'Completed';
+  if (status === 'in-progress') return 'In-Progress';
+  if (status === 'sanctioned') return 'Sanctioned';
+  if (status === 'approved') return 'Approved';
+  if (status === 'completed' || status === 'success') return 'Completed';
   if (status === 'pending') return 'Pending';
   return project.payment_status || project.approval_status || 'Pending';
 }

@@ -5,14 +5,23 @@
 :root {
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  color-scheme: dark;
+  background: #0b132b;
 }
 
 html {
   scroll-behavior: smooth;
 }
 
+html,
+body {
+  min-height: 100%;
+  background: #0b132b;
+}
+
 body {
   @apply antialiased;
+  color: #e2e8f0;
 }
 
 /* Thin, theme aware scrollbars */
@@ -34,7 +43,7 @@ body {
 
 /* Utility: subtle shimmer placeholder while loading */
 .shimmer {
-  @apply relative overflow-hidden bg-slate-200 dark:bg-slate-800;
+  @apply relative overflow-hidden bg-slate-800;
 }
 .shimmer::after {
   content: '';
@@ -49,7 +58,7 @@ body {
   animation: shimmer 1.4s linear infinite;
 }
 
-.dark .shimmer::after {
+.shimmer::after {
   background: linear-gradient(
     90deg,
     transparent,

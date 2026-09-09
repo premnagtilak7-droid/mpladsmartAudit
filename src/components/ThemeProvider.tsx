@@ -23,29 +23,25 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('dark');
 
   useEffect(() => {
-    const stored = (typeof window !== 'undefined' &&
-      window.localStorage.getItem('mplad-theme')) as Theme | null;
-    if (stored === 'light' || stored === 'dark') {
-      setThemeState(stored);
-    } else {
-      setThemeState('dark');
-    }
+    // MPLAD Radar is intentionally a dark command center. Ignore any legacy
+    // light-mode preference so there is no theme flash or alternate palette.
+    setThemeState('dark');
+    document.documentElement.classList.add('dark');
+    document.documentElement.style.colorScheme = 'dark';
+    window.localStorage.setItem('mplad-theme', 'dark');
   }, []);
 
   useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') root.classList.add('dark');
-    else root.classList.remove('dark');
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('mplad-theme', theme);
-    }
+    document.documentElement.classList.add('dark');
+    document.documentElement.style.colorScheme = 'dark';
+    if (typeof window !== 'undefined') window.localStorage.setItem('mplad-theme', 'dark');
   }, [theme]);
 
   const value = useMemo<ThemeCtx>(
     () => ({
       theme,
-      setTheme: setThemeState,
-      toggle: () => setThemeState((t) => (t === 'dark' ? 'light' : 'dark')),
+      setTheme: () => setThemeState('dark'),
+      toggle: () => setThemeState('dark'),
     }),
     [theme],
   );

@@ -45,6 +45,9 @@ export interface Project {
   vendor_name: string | null;
   /** "Payment Status" */
   payment_status: string | null;
+  /** Optional normalized status/stage fields present in newer MoSPI ingests. */
+  status?: string | null;
+  stage?: string | null;
   /** "Fund Disbursed Amount ( ₹ )" */
   amount: number | null;
 
