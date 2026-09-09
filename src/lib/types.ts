@@ -8,6 +8,12 @@ export type AnomalyType =
   | 'Prohibited Asset'
   | 'Normal';
 
+export type ViolationCategory =
+  | 'Split Tendering'
+  | 'Duplicate Location'
+  | 'Prohibited Asset'
+  | 'SC-ST Deficit';
+
 export interface RiskDriver {
   key: 'location' | 'vendor' | 'budget';
   label: string;
@@ -69,14 +75,15 @@ export interface AuditNarrative {
   generatedAt: string;
 }
 
-/** Shape used by the drawer section B POST /api/audit payload & response. */
+/** Shape used by section B POST /api/audit payload & response. */
 export interface AuditRequest {
   project: Project;
 }
+
 export interface AuditResponse {
-  narrative: string;
-  riskScore: number;
-  anomalyType: AnomalyType;
-  drivers: RiskDriver[];
-  generatedAt: string;
+  violation_category: ViolationCategory;
+  risk_score: number;
+  audit_summary: string[];
+  recommended_action: string;
+  generated_at: string;
 }

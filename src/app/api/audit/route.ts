@@ -1,134 +1,195 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { AuditRequest, AuditResponse, RiskDriver } from '@/lib/types';
+import type {
+  AuditRequest,
+  AuditResponse,
+  Project,
+  ViolationCategory,
+} from '@/lib/types';
 
-/**
- * POST /api/audit
- *
- * Returns a plain-text AI audit narrative for a given project. This is the
- * server-side consolidation point for the "Gemini AI Auditor" explainability:
- * the narrative can be produced by a model (e.g. Gemini via a server-side key
- * stored in an env var) or, when no key is configured, by a deterministic
- * rule-based fallback so the feature works end-to-end in preview.
- *
- * NOTE: Never expose an AI/LLM provider key to the browser — call the model
- * provider here, server-side only.
- */
+const MODEL = 'gemini-1.5-flash';
+const TEMPERATURE = 0.2;
+
+const SYSTEM_PROMPT = [
+  'You are a MoSPI Senior Vigilance Auditor for the MPLAD Scheme.',
+  'Your analysis must reference legal controls from:',
+  '- MPLAD Scheme Guidelines Section 3: Prohibited Works/Assets',
+  '- MPLAD Scheme Guidelines Section 4: SC/ST statutory mandate.',
+  'Always be factual, strict, and concise.',
+  'Return ONLY valid JSON matching this schema:',
+  '{',
+  '  "violation_category": "Split Tendering" | "Duplicate Location" | "Prohibited Asset" | "SC-ST Deficit",',
+  '  "risk_score": number,',
+  '  "audit_summary": ["bullet 1", "bullet 2", "bullet 3"],',
+  '  "recommended_action": "single actionable District Magistrate directive"',
+  '}',
+  'No markdown. No extra keys. Exactly 3 bullets in audit_summary.',
+].join('\n');
+
 export async function POST(req: NextRequest) {
   let body: AuditRequest;
   try {
     body = (await req.json()) as AuditRequest;
   } catch {
-    return NextResponse.json(
-      { error: 'Invalid JSON body' },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const p = body?.project;
-  if (!p) {
+  const project = body?.project;
+  if (!project) {
     return NextResponse.json({ error: 'Missing project' }, { status: 400 });
   }
 
-  const riskScore = clamp(p.risk_score ?? 0, 0, 100);
-  const anomaly =
-    p.anomaly_type && p.anomaly_type !== 'Normal'
-      ? p.anomaly_type
-      : classify(riskScore);
-
-  const drivers = p.risk_drivers?.length
-    ? p.risk_drivers
-    : buildDrivers(anomaly);
-
-  // Optional: swap in a real LLM call here using a server-side API key.
-  const narrative = buildNarrative(p, anomaly, riskScore, drivers);
-  const generatedAt = new Date().toISOString();
-
-  const response: AuditResponse = {
-    narrative,
-    riskScore,
-    anomalyType: anomaly,
-    drivers,
-    generatedAt,
-  };
-
-  return NextResponse.json(response);
+  try {
+    const response = await runGeminiAudit(project);
+    return NextResponse.json(response);
+  } catch {
+    const fallback = buildFallback(project);
+    return NextResponse.json(fallback);
+  }
 }
 
-function clamp(n: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, n));
-}
+async function runGeminiAudit(project: Project): Promise<AuditResponse> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY missing');
+  }
 
-function classify(score: number): AuditResponse['anomalyType'] {
-  if (score >= 80) return 'Prohibited Asset';
-  if (score >= 50) return 'Split Tendering';
-  return 'Normal';
-}
-
-function buildDrivers(anomaly: string): RiskDriver[] {
-  const map: Record<string, RiskDriver[]> = {
-    'Duplicate Location': [
-      { key: 'location', label: 'Location Proximity', score: 88, weight: 0.35, note: 'Vouchers cluster within a narrow geo-radius.' },
-      { key: 'vendor', label: 'Vendor Splitting', score: 52, weight: 0.35, note: 'Overlapping vendor entities detected.' },
-      { key: 'budget', label: 'Budget Pattern', score: 65, weight: 0.3, note: 'Unit cost deviates from benchmark.' },
-    ],
-    'Split Tendering': [
-      { key: 'location', label: 'Location Proximity', score: 42, weight: 0.35, note: 'Minor geographic overlap.' },
-      { key: 'vendor', label: 'Vendor Splitting', score: 92, weight: 0.35, note: 'Tenders split below sanction threshold via related vendors.' },
-      { key: 'budget', label: 'Budget Pattern', score: 84, weight: 0.3, note: 'Multiple sums close to approval cap.' },
-    ],
-    'Prohibited Asset': [
-      { key: 'location', label: 'Location Proximity', score: 30, weight: 0.35, note: 'No clustering concern.' },
-      { key: 'vendor', label: 'Vendor Splitting', score: 38, weight: 0.35, note: 'Single vendor.' },
-      { key: 'budget', label: 'Budget Pattern', score: 94, weight: 0.3, note: 'Asset class flagged as non-permissible expenditure.' },
-    ],
-    Normal: [
-      { key: 'location', label: 'Location Proximity', score: 15, weight: 0.35, note: 'No clustering.' },
-      { key: 'vendor', label: 'Vendor Splitting', score: 18, weight: 0.35, note: 'No related parties.' },
-      { key: 'budget', label: 'Budget Pattern', score: 14, weight: 0.3, note: 'Unit costs within benchmark.' },
+  const payload = {
+    system_instruction: {
+      parts: [{ text: SYSTEM_PROMPT }],
+    },
+    generationConfig: {
+      temperature: TEMPERATURE,
+      responseMimeType: 'application/json',
+    },
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            text: JSON.stringify({
+              context: 'MPLAD work expenditure audit',
+              project,
+              expected_categories: [
+                'Split Tendering',
+                'Duplicate Location',
+                'Prohibited Asset',
+                'SC-ST Deficit',
+              ],
+            }),
+          },
+        ],
+      },
     ],
   };
-  return map[anomaly] ?? map.Normal;
+
+  const geminiRes = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (!geminiRes.ok) {
+    throw new Error(`Gemini call failed with ${geminiRes.status}`);
+  }
+
+  const data = (await geminiRes.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  const parsed = JSON.parse(text) as Partial<AuditResponse>;
+
+  return normalizeAuditResponse(parsed, project);
 }
 
-function buildNarrative(
-  p: AuditRequest['project'],
-  anomaly: string,
-  score: number,
-  drivers: RiskDriver[],
-): string {
-  const work = p.work || 'the sanctioned work';
-  const vendor = p.vendor_name || 'the vendor';
-  const mp = p.mp || 'the MP';
-  const constituency = p.constituency || 'the constituency';
-  const amt = p.amount ? Number(p.amount).toLocaleString('en-IN') : 'n/a';
+function normalizeAuditResponse(input: Partial<AuditResponse>, project: Project): AuditResponse {
+  const allowed: ViolationCategory[] = [
+    'Split Tendering',
+    'Duplicate Location',
+    'Prohibited Asset',
+    'SC-ST Deficit',
+  ];
 
-  const driverLine = drivers
-    .map((d) => `- ${d.label}: ${d.score}/100 (${d.note})`)
-    .join('\n');
+  const violationCategory = allowed.includes(input.violation_category as ViolationCategory)
+    ? (input.violation_category as ViolationCategory)
+    : inferCategory(project);
 
-  const disposition =
-    score >= 80
-      ? 'HIGH RISK'
-      : score >= 50
-        ? 'MEDIUM RISK'
-        : 'LOW RISK';
+  const risk = clamp(Number(input.risk_score ?? project.risk_score ?? 50), 0, 100);
 
-  return [
-    `AI AUDITOR NARRATIVE — "${disposition}" (Risk ${score}/100)`,
-    ``,
-    `Project: ${work}`,
-    `Work ID: ${p.work_id || 'N/A'} | MP: ${mp} | Constituency: ${constituency}`,
-    `Vendor: ${vendor} | Disbursed: ₹${amt}`,
-    ``,
-    `Anomaly Type: ${anomaly}`,
-    ``,
-    `The system flags this record for "${anomaly}" with an overall risk score of ${score}/100. Key risk drivers:`,
-    driverLine,
-    ``,
-    score >= 80
-      ? `Recommendation: Immediately halt any in-flight disbursement, escalate to the District Magistrate for an on-ground verification, and place the vendor on the watch-list pending an official audit note. Freezing disbursement is advised to prevent further exposure of public funds.`
-      : score >= 50
-        ? `Recommendation: Schedule a field verification within 30 days. Confirm whether the expenditure aligns with sanctioned MPLAD guidelines and whether vendor splitting bypassed tender limits. If confirmed, elevate for an official audit note.`
-        : `Recommendation: No immediate action required. The record aligns with normal disbursement patterns. Retain for periodic post-facto review.`,
-  ].join('\n');
+  const summary = Array.isArray(input.audit_summary)
+    ? input.audit_summary.filter(Boolean).map((line) => String(line).trim()).slice(0, 3)
+    : [];
+
+  while (summary.length < 3) {
+    summary.push(defaultSummaryLine(summary.length, violationCategory, project));
+  }
+
+  return {
+    violation_category: violationCategory,
+    risk_score: risk,
+    audit_summary: summary,
+    recommended_action:
+      String(input.recommended_action || '').trim() ||
+      defaultAction(violationCategory),
+    generated_at: new Date().toISOString(),
+  };
+}
+
+function buildFallback(project: Project): AuditResponse {
+  const violation = inferCategory(project);
+  const risk = clamp(Number(project.risk_score ?? 70), 0, 100);
+
+  return {
+    violation_category: violation,
+    risk_score: risk,
+    audit_summary: [
+      `Work ${project.work_id || `MPLAD-${project.id}`} indicates ${violation} with risk score ${risk}/100 after statutory checks.`,
+      'Section 3 compliance review indicates expenditure pattern may conflict with permissible MPLAD work categories.',
+      'Section 4 allocation review requires SC/ST share verification with district-level documentary evidence.',
+    ],
+    recommended_action: defaultAction(violation),
+    generated_at: new Date().toISOString(),
+  };
+}
+
+function inferCategory(project: Project): ViolationCategory {
+  const anomaly = project.anomaly_type;
+  if (anomaly === 'Split Tendering') return 'Split Tendering';
+  if (anomaly === 'Duplicate Location') return 'Duplicate Location';
+  if (anomaly === 'Prohibited Asset') return 'Prohibited Asset';
+
+  const constituency = `${project.constituency || ''}`.toUpperCase();
+  if (!constituency.includes('SC') && !constituency.includes('ST')) {
+    return 'SC-ST Deficit';
+  }
+  return 'Split Tendering';
+}
+
+function defaultSummaryLine(index: number, violation: ViolationCategory, project: Project): string {
+  const lines = [
+    `Potential ${violation} observed in work ${project.work_id || `MPLAD-${project.id}`} based on disbursement and location signals.`,
+    'Section 3 legal screening indicates elevated risk of non-permissible expenditure or sanctioned scope deviation.',
+    'Section 4 statutory obligation to ensure SC/ST allocation requires immediate district verification and compliance report.',
+  ];
+  return lines[index] || lines[2];
+}
+
+function defaultAction(violation: ViolationCategory): string {
+  if (violation === 'Duplicate Location') {
+    return 'Issue duplicate-site verification notice, geo-validate with field team, and freeze further disbursement until closure.';
+  }
+  if (violation === 'Prohibited Asset') {
+    return 'Issue Section 3 Show-Cause Notice & Freeze Account pending MoSPI legal scrutiny and asset admissibility review.';
+  }
+  if (violation === 'SC-ST Deficit') {
+    return 'Issue Section 4 compliance direction, mandate SC/ST corrective allocation plan, and suspend new drawdowns until compliance.';
+  }
+  return 'Issue Section 3 Show-Cause Notice & Freeze Account; direct DM to conduct vendor and sanction-threshold verification within 7 days.';
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }

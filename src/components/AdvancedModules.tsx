@@ -52,4 +52,4 @@ export function LegalMemoModal({ project, narrative, onClose }: { project: Proje
 
 function Meta({ label, value }: { label: string; value: string }) { return <div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{label}</div><div className="mt-1 truncate font-bold" title={value}>{value}</div></div>; }
 
-export function LockBadge({ timestamp }: { timestamp: string }) { return <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-1 text-[9px] font-black text-rose-700 dark:bg-rose-500/15 dark:text-rose-300"><LockKeyhole size={11} /> LOCKED {timestamp}</span>; }
+export function LockBadge({ timestamp }: { timestamp: string }) { return <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-1 text-[9px] font-black text-rose-700 dark:bg-rose-500/15 dark:text-rose-300"><LockKeyhole size={11} /> DISBURSEMENT LOCKED BY AUDITOR • {timestamp}</span>; }
