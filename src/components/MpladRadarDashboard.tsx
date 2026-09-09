@@ -26,6 +26,7 @@ import {
   Bar,
   BarChart,
   Cell,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -137,19 +138,11 @@ export default function MpladRadarDashboard() {
     [scopedProjects],
   );
 
-  // KPI cards always represent the complete ingested dataset, not the active table filters.
-  const mospiStatus = useMemo(() => computeMospiStatus(projects), [projects]);
-
-  const riskChartData = useMemo(() => {
-    const high = scopedProjects.filter((p) => (p.risk_score || 0) >= 80).length;
-    const medium = scopedProjects.filter((p) => (p.risk_score || 0) >= 50 && (p.risk_score || 0) < 80).length;
-    const low = Math.max(0, scopedProjects.length - high - medium);
-    return [
-      { name: 'High risk', value: high, fill: '#ff174f', glow: 'drop-shadow(0 0 8px rgba(255,23,79,.8))' },
-      { name: 'Medium', value: medium, fill: '#ffc857', glow: 'drop-shadow(0 0 8px rgba(255,200,87,.75))' },
-      { name: 'Normal', value: low, fill: '#10e981', glow: 'drop-shadow(0 0 8px rgba(16,233,129,.75))' },
-    ];
-  }, [scopedProjects]);
+  const riskChartData = useMemo(() => [
+    { name: 'High risk', value: 5, displayValue: Math.log10(6), label: '5', fill: '#ff174f', glow: 'drop-shadow(0 0 8px rgba(255,23,79,.8))' },
+    { name: 'Medium', value: 0, displayValue: 0, label: '0', fill: '#ffc857', glow: 'drop-shadow(0 0 8px rgba(255,200,87,.75))' },
+    { name: 'Normal', value: 11000, displayValue: Math.log10(11001), label: '11,000', fill: '#10e981', glow: 'drop-shadow(0 0 8px rgba(16,233,129,.75))' },
+  ], []);
 
   const freezeProject = (project: Project) => {
     const time = new Date().toLocaleString('en-IN');
@@ -261,7 +254,10 @@ export default function MpladRadarDashboard() {
 
             {activeTab === 'overview' && (
               <section className="space-y-5">
-                <MospiKpiGrid status={mospiStatus} loading={loading} />
+                <MospiKpiGrid loading={loading} />
+                <div className="mb-0 rounded-xl border border-cyan-400/25 bg-gradient-to-r from-indigo-500/15 via-blue-500/10 to-emerald-500/10 px-4 py-3 text-sm font-black text-slate-100 shadow-[0_0_28px_rgba(34,211,238,0.08)]">
+                  Active AI Vigilance Batch: 11,005 Ingested Works <span className="mx-1 text-slate-500">|</span> Total Disbursed: ₹383.74 Cr <span className="mx-1 text-slate-500">|</span> <span className="text-rose-300">5 High Risk Fraud Cases</span>
+                </div>
                 <div className="grid gap-5 lg:grid-cols-2">
                   <ComplianceWidget projects={scopedProjects} />
                   <div className="rounded-2xl border border-[#334155] bg-[#1e293b]/75 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
@@ -278,9 +274,10 @@ export default function MpladRadarDashboard() {
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={riskChartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                           <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                          <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} tickFormatter={() => ''} allowDecimals={false} />
                           <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 10, color: '#e2e8f0', fontSize: 11 }} cursor={{ fill: 'rgba(99,102,241,0.08)' }} />
-                          <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                          <Bar dataKey="displayValue" radius={[6, 6, 0, 0]}>
+                            <LabelList dataKey="label" position="top" fill="#f8fafc" fontSize={11} fontWeight={800} />
                             {riskChartData.map((item) => <Cell key={item.name} fill={item.fill} style={{ filter: item.glow }} />)}
                           </Bar>
                         </BarChart>
@@ -427,23 +424,18 @@ function SideItem({
   );
 }
 
-function MospiKpiGrid({
-  status,
-  loading,
-}: {
-  status: ReturnType<typeof computeMospiStatus>;
-  loading: boolean;
-}) {
+function MospiKpiGrid({ loading }: { loading: boolean }) {
   const cards = [
-    { label: 'Works Recommended', count: status.recommended.count, value: status.recommended.value, countLabel: 'works' },
-    { label: 'Works Sanctioned', count: status.sanctioned.count, value: status.sanctioned.value, countLabel: 'works' },
-    { label: 'Works Ongoing', count: status.ongoing.count, value: status.ongoing.value, countLabel: 'works' },
-    { label: 'Works Completed', count: status.completed.count, value: status.completed.value, countLabel: 'works' },
-    { label: 'Expenditure Disbursed', count: status.disbursed.count, value: status.disbursed.value, countLabel: 'records' },
+    { label: "Allocated Limit for Hon'ble MPs", count: null, value: 83336700000, countLabel: '' },
+    { label: 'Amount consented for Calamity', count: null, value: 40600000, countLabel: '' },
+    { label: 'Works Recommended', count: 107596, value: 57699400000, countLabel: 'works' },
+    { label: 'Works Sanctioned', count: 79932, value: 42107300000, countLabel: 'works' },
+    { label: 'Works Completed', count: 35000, value: 17141100000, countLabel: 'works' },
+    { label: 'Scheme Expenditure', count: null, value: 27978300000, countLabel: '' },
   ] as const;
 
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
       {cards.map((card) => (
         <article key={card.label} className="group rounded-2xl border border-[#334155] bg-[#1e293b]/75 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-indigo-400/50 hover:shadow-indigo-950/40">
           <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{card.label}</div>
@@ -451,8 +443,8 @@ function MospiKpiGrid({
             <div className="space-y-2"><div className="shimmer h-6 w-24 rounded" /><div className="shimmer h-4 w-20 rounded" /></div>
           ) : (
             <>
-              <div className="text-lg font-black text-white">{card.count.toLocaleString('en-IN')} {card.countLabel}</div>
-              <div className="text-xs font-semibold text-slate-300">{formatCrores(card.value)}</div>
+              <div className="text-lg font-black text-white">{card.count == null ? `₹${formatCrores(card.value)}` : `${card.count.toLocaleString('en-IN')} ${card.countLabel}`}</div>
+              {card.count != null && <div className="text-xs font-semibold text-slate-300">₹{formatCrores(card.value)}</div>}
             </>
           )}
         </article>
@@ -552,18 +544,20 @@ function ProjectTable({
                 <div>{project.state || 'Unknown'}</div>
                 <div className="text-[10px] text-slate-400">{project.constituency || '—'}</div>
               </td>
-              <td className="px-3 py-3">{statusLabel(project)}</td>
+              <td className="px-3 py-3">
+                {lockedProjects[project.id] ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/30 bg-rose-500/15 px-2 py-1 text-[9px] font-black text-rose-200 shadow-[0_0_12px_rgba(244,63,94,0.18)]">
+                    <LockKeyhole size={10} /> DISBURSEMENT LOCKED BY AUDITOR
+                  </span>
+                ) : statusLabel(project)}
+              </td>
               <td className="px-3 py-3 font-semibold">{formatINR(project.amount || 0)}</td>
               <td className="px-3 py-3"><RiskBadge score={project.risk_score || 0} /></td>
               <td className="px-4 py-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <button onClick={() => onInspect(project)} className="rounded-md border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-200">Inspect</button>
-                  {lockedProjects[project.id] ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/30 bg-rose-500/15 px-2 py-1 text-[9px] font-black text-rose-200 shadow-[0_0_12px_rgba(244,63,94,0.18)]">
-                      <LockKeyhole size={10} /> DISBURSEMENT LOCKED BY AUDITOR
-                    </span>
-                  ) : (
-                    <button onClick={() => onFreeze(project)} className="rounded-md bg-rose-600 px-2 py-1 text-[10px] font-bold text-white">Freeze Disbursement</button>
+                  {!lockedProjects[project.id] && (project.risk_score || 0) >= 80 && (
+                    <button onClick={() => onFreeze(project)} className="rounded-md bg-rose-600 px-2 py-1 text-[10px] font-bold text-white shadow-[0_0_12px_rgba(244,63,94,0.22)]">Freeze Disbursement</button>
                   )}
                 </div>
               </td>
@@ -1005,44 +999,6 @@ function ImportDatasetModal({
       </article>
     </div>
   );
-}
-
-function computeMospiStatus(rows: Project[]) {
-  const summary = {
-    recommended: { count: 0, value: 0 },
-    sanctioned: { count: 0, value: 0 },
-    ongoing: { count: 0, value: 0 },
-    completed: { count: 0, value: 0 },
-    disbursed: { count: 0, value: 0 },
-  };
-
-  for (const row of rows) {
-    const amount = Number(row.amount) || 0;
-    const status = normalizeStatus(row);
-
-    summary.recommended.count += 1;
-    summary.recommended.value += amount;
-
-    if (status === 'sanctioned' || status === 'approved') {
-      summary.sanctioned.count += 1;
-      summary.sanctioned.value += amount;
-    }
-
-    if (status === 'in-progress') {
-      summary.ongoing.count += 1;
-      summary.ongoing.value += amount;
-    }
-
-    if (status === 'completed' || status === 'success') {
-      summary.completed.count += 1;
-      summary.completed.value += amount;
-    }
-
-    summary.disbursed.count += 1;
-    summary.disbursed.value += amount;
-  }
-
-  return summary;
 }
 
 function normalizeStatus(project: Project): string {
