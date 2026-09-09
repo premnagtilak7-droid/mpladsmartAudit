@@ -6,13 +6,14 @@
 - **Core Stack**: Next.js 14, React, TypeScript, Supabase, Recharts, Framer Motion, Gemini 1.5 Flash API
 
 ## Currently Completed Features
-1. **Official MoSPI KPI Header (5-card status structure)**
-   - Works Recommended (count + value)
-   - Works Sanctioned (status != Pending)
-   - Works Ongoing (In-Progress / Ongoing)
-   - Works Completed (Completed / Payment Success)
-   - Expenditure Disbursed (total disbursed value)
-   - Top policy banner: **Official MoSPI Scheme Expenditure Baseline: ₹2,797.83 Cr (National Coverage)**
+1. **Official MoSPI KPI Header (6-card national baseline)**
+   - Allocated Limit for Hon'ble MPs — ₹8,333.67 Cr
+   - Amount consented for Calamity — ₹4.06 Cr
+   - Works Recommended — 107,596 works | ₹5,769.94 Cr
+   - Works Sanctioned — 79,932 works | ₹4,210.73 Cr
+   - Works Completed — 35,000 works | ₹1,714.11 Cr
+   - Scheme Expenditure — ₹2,797.83 Cr
+   - Active AI Vigilance Batch banner — 11,005 ingested works, ₹383.74 Cr disbursed, 5 high-risk cases
 
 2. **Dynamic CSV / JSON Import Engine**
    - "Import New MoSPI Dataset" action in top nav next to Refresh
@@ -41,40 +42,53 @@
    - Official notes
 
 5. **Audit Overview Enhancements**
-   - 5 KPI cards + SC/ST compliance widget
+   - 6 official MoSPI national KPI cards + SC/ST compliance widget
    - GIS Map toggle and table toggle
-   - Main paginated table with row-level actions
+   - Main paginated table with conditional high-risk freeze actions
 
-6. **Anomaly Queue (risk_score >= 80)**
+6. **Dual Public / Authority Portal Architecture**
+   - Header role switcher for Central Auditor, Public Citizen, and MP & District Authority views
+   - English, Hindi, and Marathi UI language selector
+   - Citizen near-me asset map, completed/in-progress markers, asset detail drawer, public QR verification, feedback form, satisfaction rating, and open-data CSV/PDF export controls
+   - Authority pre-submission AI validator routed through `/api/audit`, with synthetic prohibited-asset and threshold warnings
+   - Authority recommendation pipeline, entitlement/tranche tracker, constituency report card print modal, and field-proof upload drawer
+
+7. **Anomaly Queue (risk_score >= 80)**
    - High-risk-only queue
    - Row quick actions:
      - Freeze Disbursement
      - Generate DM Memo PDF
      - Inspect AI Evidence
 
-7. **Fund Intelligence**
+8. **Fund Intelligence**
    - State-wise analytics table
    - Bar chart by state disbursement
    - State + constituency filters
    - Includes total works, disbursed amount, SC/ST compliance %, flagged count
 
-8. **Official Notes**
+9. **Official Notes**
    - Timeline log for disbursement locks, imports, and legal memo exports
 
-9. **Pagination + Controls**
+10. **Pagination + Controls**
    - **50 records per page**
    - Previous/Next controls
    - Footer: `Page X of Y (N records)`
 
-10. **Freeze + Memo Workflow**
+11. **Freeze + Memo Workflow**
    - Freeze action marks records as:
      - **DISBURSEMENT LOCKED BY AUDITOR**
    - AI inspection drawer supports **Export DM Legal Memo**
    - Printable legal memo modal available (Print / Save PDF)
 
 ## Functional Entry URIs (Paths & Parameters)
-- `/`  
-  Main MPLAD Radar dashboard UI.
+- `/`
+  Main MPLAD Radar dashboard UI. Use the header role switcher for the three portal modes.
+- `/?portal=citizen`
+  Opens the Public Citizen Portal directly.
+- `/?portal=authority`
+  Opens the MP & District Authority Workspace directly.
+- `/?portal=citizen&verify=<work-id>`
+  Opens public verification details for a matching work ID or project ID.
 
 - `/api/audit` (POST)  
   Request body:
@@ -117,20 +131,18 @@
   - workflow fields (`approval_status`, `completion_percent`)
 
 ## User Guide (Quick)
-1. Open dashboard `/`
-2. Click **Refresh data** to reload current Supabase projects
-3. Click **Import New MoSPI Dataset** to upload CSV or paste JSON
-4. Review top 5 MoSPI status cards
-5. Use **Anomaly queue** for high-risk records
-6. Open **Inspect AI Evidence** on any record
-7. Run **Freeze Disbursement** and **Export DM Legal Memo** when escalation is required
-8. Use **Fund intelligence** tab for state/constituency-level planning
+1. Open dashboard `/` and choose a role from the top switcher.
+2. Central Auditor: review official KPIs, anomalies, state intelligence, and notes.
+3. Public Citizen: search/inspect nearby works, open a QR verification card, submit Gram Sabha feedback, or download open data.
+4. MP & District Authority: enter a proposal and run the Gemini-backed pre-submission validator; use the report card, tranche tracker, and field-proof drawer.
+5. Change `EN`, `हिन्दी`, or `मराठी` to update portal headings and labels.
+6. All portal views read the live Supabase `projects` dataset; the authority validator posts proposal context to `/api/audit`.
 
 ## Features Not Yet Implemented
-- Server-side authenticated import endpoint with service-role key isolation (current import is client-driven and depends on Supabase permissions)
-- Persistent official notes storage in database (currently session-side UI logs)
-- Real GIS coordinates from source data (current map plotting is visual cluster simulation)
-- Automated PDF file persistence/export pipeline (current legal memo is printable modal workflow)
+- Server-side authenticated import, feedback, and field-proof endpoints with service-role key isolation
+- Persistent citizen feedback, QR registry, tranche proof, and official notes tables
+- Real latitude/longitude geospatial rendering (current portal map uses live records with deterministic visual placement and browser geolocation status)
+- Automated server-side PDF file persistence/export pipeline (current exports use browser CSV download and print workflows)
 
 ## Recommended Next Steps
 1. Add secure backend ingestion API with schema validation and signed import batches
@@ -144,6 +156,8 @@
 - **Status**: ✅ Build verified locally
 - **Build Command**: `npm run build`
 - **Last Updated**: 2026-09-09
+- **Portal modes**: Central Auditor, Public Citizen, MP & District Authority
+- **Languages**: English, Hindi, Marathi
 
 ## Environment Variables
 - `NEXT_PUBLIC_SUPABASE_URL`

@@ -48,6 +48,7 @@ import type {
   RiskDriver,
   ViolationCategory,
 } from '@/lib/types';
+import { AuthorityWorkspace, CitizenPortal, type PortalLanguage } from '@/components/PortalViews';
 
 const PAGE_SIZE = 50;
 const MOSPI_BASELINE = '₹2,797.83 Cr';
@@ -70,8 +71,26 @@ const defaultAnomalies: Array<'All Types' | AnomalyType> = [
   'Normal',
 ];
 
+type PortalRole = 'central' | 'citizen' | 'authority';
+const centralCopy = {
+  en: { workspace: 'Audit workspace', overview: 'Audit overview', anomalies: 'Anomaly queue', intelligence: 'Fund intelligence', notes: 'Official notes', refresh: 'Refresh data', import: 'Import New MoSPI Dataset', command: 'Dark command center' },
+  hi: { workspace: 'ऑडिट कार्यक्षेत्र', overview: 'ऑडिट अवलोकन', anomalies: 'विसंगति कतार', intelligence: 'फंड इंटेलिजेंस', notes: 'आधिकारिक नोट्स', refresh: 'डेटा रीफ्रेश करें', import: 'नया MoSPI डेटा आयात करें', command: 'डार्क कमांड सेंटर' },
+  mr: { workspace: 'ऑडिट कार्यक्षेत्र', overview: 'ऑडिट आढावा', anomalies: 'विसंगती रांग', intelligence: 'फंड इंटेलिजन्स', notes: 'अधिकृत नोंदी', refresh: 'डेटा रिफ्रेश करा', import: 'नवीन MoSPI डेटासेट आयात करा', command: 'डार्क कमांड सेंटर' },
+} as const;
+
 export default function MpladRadarDashboard() {
   const { projects, loading, error, live, recordCount, reload } = useProjects();
+  const [role, setRole] = useState<PortalRole>('central');
+  const [language, setLanguage] = useState<PortalLanguage>('en');
+  const [verifyId, setVerifyId] = useState('');
+  const ui = centralCopy[language];
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedRole = params.get('portal');
+    if (requestedRole === 'citizen' || requestedRole === 'authority') setRole(requestedRole);
+    setVerifyId(params.get('verify') || '');
+  }, []);
 
   const [activeTab, setActiveTab] = useState<'overview' | 'anomalies' | 'intelligence' | 'notes'>('overview');
   const [mobileNav, setMobileNav] = useState(false);
@@ -186,52 +205,65 @@ export default function MpladRadarDashboard() {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
+            <select value={role} onChange={(event) => setRole(event.target.value as PortalRole)} aria-label="Select portal role" className="hidden max-w-[220px] rounded-lg border border-indigo-400/30 bg-[#1e293b] px-2 py-2 text-[10px] font-bold text-indigo-100 outline-none sm:block">
+              <option value="central">Central Auditor View</option>
+              <option value="citizen">Public Citizen Portal</option>
+              <option value="authority">MP &amp; District Authority Workspace</option>
+            </select>
+            <select value={language} onChange={(event) => setLanguage(event.target.value as PortalLanguage)} aria-label="Select language" className="rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-2 text-[10px] font-black text-slate-200 outline-none">
+              <option value="en">EN</option><option value="hi">हिन्दी</option><option value="mr">मराठी</option>
+            </select>
             <button
               onClick={reload}
               className="inline-flex items-center gap-2 rounded-lg border border-[#334155] bg-[#1e293b]/70 px-3 py-2 text-xs font-bold text-slate-200 shadow-lg shadow-black/10 transition hover:border-indigo-400/70 hover:bg-indigo-500/10"
             >
-              <RefreshCw size={14} /> Refresh data
+              <RefreshCw size={14} /> {ui.refresh}
             </button>
             <button
               onClick={() => setShowImport(true)}
               className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-700"
             >
-              <Upload size={14} /> Import New MoSPI Dataset
+              <Upload size={14} /> {ui.import}
             </button>
             <span className="hidden items-center gap-2 rounded-lg border border-indigo-400/30 bg-indigo-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-indigo-200 sm:inline-flex">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_10px_#10e981]" /> Dark command center
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_10px_#10e981]" /> {ui.command}
             </span>
           </div>
         </div>
       </header>
 
+      {role === 'citizen' ? (
+        <CitizenPortal projects={projects} language={language} verifyId={verifyId} />
+      ) : role === 'authority' ? (
+        <AuthorityWorkspace projects={projects} language={language} />
+      ) : (
       <div className="mx-auto flex max-w-[1600px]">
           <aside className={`${mobileNav ? 'fixed inset-y-16 left-0 z-30 flex' : 'hidden'} w-64 shrink-0 flex-col border-r border-[#334155]/70 bg-[#0f172a]/95 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl lg:sticky lg:top-16 lg:flex lg:h-[calc(100vh-4rem)]`}>
-          <div className="mb-3 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Audit workspace</div>
+          <div className="mb-3 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">{ui.workspace}</div>
           <nav className="space-y-1">
             <SideItem
               active={activeTab === 'overview'}
               onClick={() => setActiveTab('overview')}
               icon={<LayoutDashboard size={16} />}
-              label="Audit overview"
+              label={ui.overview}
             />
             <SideItem
               active={activeTab === 'anomalies'}
               onClick={() => setActiveTab('anomalies')}
               icon={<ShieldAlert size={16} />}
-              label={`Anomaly queue (${highRiskRows.length})`}
+              label={`${ui.anomalies} (${highRiskRows.length})`}
             />
             <SideItem
               active={activeTab === 'intelligence'}
               onClick={() => setActiveTab('intelligence')}
               icon={<BarChart3 size={16} />}
-              label="Fund intelligence"
+              label={ui.intelligence}
             />
             <SideItem
               active={activeTab === 'notes'}
               onClick={() => setActiveTab('notes')}
               icon={<FileText size={16} />}
-              label="Official notes"
+              label={ui.notes}
             />
           </nav>
 
@@ -359,6 +391,7 @@ export default function MpladRadarDashboard() {
           </div>
         </main>
       </div>
+      )}
 
       <AnimatePresence>
         {selected && (
