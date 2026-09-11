@@ -124,6 +124,8 @@ function normalizeProject(row: SupabaseProjectRow, index: number): Project {
     latitude: numberValue(row.latitude ?? row.lat ?? row.Latitude ?? row.Lat),
     longitude: numberValue(row.longitude ?? row.lng ?? row.Longitude ?? row.Lng),
     amount,
+    allocated_amount: numberValue(row.allocated_amount ?? row['Allocated Amount'] ?? row['Allocated AMOUNT (₹)']),
+    sanctioned_amount: numberValue(row.sanctioned_amount ?? row['Sanctioned Amount'] ?? row['Sanctioned AMOUNT (₹)']),
     risk_score: riskScore,
     anomaly_type: anomaly,
     risk_drivers: riskDrivers(row.risk_drivers),

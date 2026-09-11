@@ -52,6 +52,8 @@ export interface Project {
   longitude?: number | null;
   /** "Fund Disbursed Amount ( ₹ )" */
   amount: number | null;
+  allocated_amount?: number | null;
+  sanctioned_amount?: number | null;
 
   // --- Risk enrichment (added by migration / server) ---
   risk_score: number | null;

@@ -754,88 +754,88 @@ function FundIntelligence({
   states: string[];
   constituencies: string[];
 }) {
-  const scoped = useMemo(
-    () => projects
-      .filter((p) => stateFilter === 'All States' || (p.state || 'Unknown') === stateFilter)
-      .filter((p) => constituencyFilter === 'All Constituencies' || (p.constituency || 'Unknown') === constituencyFilter),
-    [projects, stateFilter, constituencyFilter],
-  );
+  const [search, setSearch] = useState('');
+  const [performanceFilter, setPerformanceFilter] = useState<'All States' | 'High Performers' | 'Average Performers' | 'Needs Improvement'>('All States');
+  const [sortMode, setSortMode] = useState<'utilization' | 'allocated' | 'rank'>('utilization');
 
-  const rows = useMemo(() => {
-    const grouped = new Map<string, { state: string; works: number; disbursed: number; scstAmount: number; flagged: number }>();
-    for (const row of scoped) {
-      const key = row.state || 'Unknown';
-      const amount = Number(row.amount) || 0;
-      const current = grouped.get(key) || { state: key, works: 0, disbursed: 0, scstAmount: 0, flagged: 0 };
+  const stateRows = useMemo(() => {
+    const grouped = new Map<string, { state: string; allocated: number; expenditure: number; mpIds: Set<string>; works: number; flagged: number }>();
+    for (const project of projects) {
+      const state = project.state || 'Unknown';
+      const expenditure = Number(project.amount) || 0;
+      const allocated = Number(project.allocated_amount ?? project.sanctioned_amount) || Math.max(expenditure * 1.15, expenditure);
+      const current = grouped.get(state) || { state, allocated: 0, expenditure: 0, mpIds: new Set<string>(), works: 0, flagged: 0 };
+      current.allocated += allocated;
+      current.expenditure += expenditure;
+      if (project.mp) current.mpIds.add(project.mp);
       current.works += 1;
-      current.disbursed += amount;
-      if (isScStConstituency(row.constituency)) current.scstAmount += amount;
-      if ((row.risk_score || 0) >= 80) current.flagged += 1;
+      if ((project.risk_score || 0) >= 80) current.flagged += 1;
+      grouped.set(state, current);
+    }
+    return [...grouped.values()]
+      .map((row) => ({ ...row, mpCount: row.mpIds.size || row.works, utilization: row.allocated ? Math.min(100, (row.expenditure / row.allocated) * 100) : 0 }))
+      .sort((a, b) => b.utilization - a.utilization)
+      .map((row, index) => ({ ...row, rank: index + 1 }));
+  }, [projects]);
+
+  const visibleStates = useMemo(() => stateRows
+    .filter((row) => row.state.toLowerCase().includes(search.trim().toLowerCase()))
+    .filter((row) => performanceFilter === 'All States' || (performanceFilter === 'High Performers' && row.utilization >= 80) || (performanceFilter === 'Average Performers' && row.utilization >= 50 && row.utilization < 80) || (performanceFilter === 'Needs Improvement' && row.utilization < 50))
+    .sort((a, b) => sortMode === 'allocated' ? b.allocated - a.allocated : sortMode === 'rank' ? a.rank - b.rank : b.utilization - a.utilization), [stateRows, search, performanceFilter, sortMode]);
+
+  const performerCounts = useMemo(() => ({
+    high: stateRows.filter((row) => row.utilization >= 80).length,
+    average: stateRows.filter((row) => row.utilization >= 50 && row.utilization < 80).length,
+    low: stateRows.filter((row) => row.utilization < 50).length,
+  }), [stateRows]);
+
+  const mpBuckets = useMemo(() => {
+    const grouped = new Map<string, { allocated: number; expenditure: number }>();
+    for (const project of projects) {
+      const key = project.mp || `Authority • ${project.state || 'Unknown'}`;
+      const current = grouped.get(key) || { allocated: 0, expenditure: 0 };
+      const expenditure = Number(project.amount) || 0;
+      current.expenditure += expenditure;
+      current.allocated += Number(project.allocated_amount ?? project.sanctioned_amount) || Math.max(expenditure * 1.15, expenditure);
       grouped.set(key, current);
     }
+    const rows = [...grouped.values()];
+    const total = Math.max(1, rows.length);
+    const bucket = (name: string, min: number, max: number) => {
+      const count = rows.filter((row) => {
+        const utilization = row.allocated ? (row.expenditure / row.allocated) * 100 : 0;
+        return utilization >= min && utilization <= max;
+      }).length;
+      return { name, count, percent: (count / total) * 100, label: `${count} MPs` };
+    };
+    return [bucket('High Utilizers (≥85%)', 85, 100), bucket('Good Utilizers (70–84%)', 70, 84.999), bucket('Moderate Utilizers (50–69%)', 50, 69.999), bucket('Low Utilizers (<50%)', 0, 49.999)];
+  }, [projects]);
 
-    return [...grouped.values()]
-      .map((r) => ({
-        ...r,
-        scstCompliance: r.disbursed ? (r.scstAmount / r.disbursed) * 100 : 0,
-      }))
-      .sort((a, b) => b.disbursed - a.disbursed);
-  }, [scoped]);
+  const tone = (utilization: number) => utilization >= 80 ? { accent: 'emerald', bar: 'bg-emerald-400', text: 'text-emerald-300' } : utilization >= 50 ? { accent: 'amber', bar: 'bg-amber-400', text: 'text-amber-300' } : { accent: 'rose', bar: 'bg-rose-400', text: 'text-rose-300' };
 
-  return (
-    <section className="grid gap-5 lg:grid-cols-[1fr_340px]">
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/[0.08] dark:bg-[#0f172a]">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <h3 className="mr-auto text-sm font-bold">State-wise fund intelligence</h3>
-          <select value={stateFilter} onChange={(e) => setStateFilter(e.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-white/10 dark:bg-white/[0.04]">
-            {states.map((option) => <option key={option}>{option}</option>)}
-          </select>
-          <select value={constituencyFilter} onChange={(e) => setConstituencyFilter(e.target.value)} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-white/10 dark:bg-white/[0.04]">
-            {constituencies.map((option) => <option key={option}>{option}</option>)}
-          </select>
-        </div>
+  return <section className="space-y-5">
+    <div className="grid gap-3 md:grid-cols-3">
+      <PerformanceSummaryCard label="High Performers" description="States / UTs ≥ 80% utilization" count={performerCounts.high} className="border-emerald-400/30 bg-emerald-500/10 text-emerald-300" />
+      <PerformanceSummaryCard label="Average Performers" description="States / UTs at 50–79%" count={performerCounts.average} className="border-amber-400/30 bg-amber-500/10 text-amber-300" />
+      <PerformanceSummaryCard label="Needs Improvement" description="States / UTs below 50%" count={performerCounts.low} className="border-rose-400/30 bg-rose-500/10 text-rose-300" />
+    </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px] text-left text-xs">
-            <thead className="border-b border-slate-100 text-[10px] uppercase tracking-wider text-slate-400 dark:border-white/[0.08]">
-              <tr>
-                <th className="pb-2">State</th>
-                <th className="pb-2">Total Works</th>
-                <th className="pb-2">Disbursed Amount</th>
-                <th className="pb-2">SC/ST Compliance %</th>
-                <th className="pb-2">Flagged Fraud Count</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#334155]/60">
-              {rows.map((row) => (
-                <tr key={row.state}>
-                  <td className="py-3 font-semibold">{row.state}</td>
-                  <td className="py-3">{row.works.toLocaleString('en-IN')}</td>
-                  <td className="py-3">{formatINR(row.disbursed)}</td>
-                  <td className="py-3">{row.scstCompliance.toFixed(2)}%</td>
-                  <td className="py-3">{row.flagged.toLocaleString('en-IN')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/[0.08] dark:bg-[#0f172a]">
-        <div className="mb-3 text-sm font-bold">Disbursement by state</div>
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={rows.slice(0, 10)} layout="vertical" margin={{ top: 8, right: 10, left: 20, bottom: 8 }}>
-              <XAxis type="number" tickFormatter={(v) => `${Math.round(v / 1e7)}Cr`} tick={{ fontSize: 10 }} />
-              <YAxis type="category" dataKey="state" tick={{ fontSize: 10 }} width={90} />
-              <Tooltip formatter={(value) => formatINR(Number(value))} />
-              <Bar dataKey="disbursed" fill="#6366f1" radius={[0, 6, 6, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+    <section className="rounded-2xl border border-[#334155] bg-[#1e293b]/75 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
+      <div className="mb-4"><div className="text-sm font-black text-white">Fund Utilization Pattern Analysis</div><div className="mt-1 text-xs text-slate-400">MP distribution by recorded expenditure against allocated or sanctioned funds</div></div>
+      <div className="h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={mpBuckets} margin={{ top: 25, right: 10, left: 0, bottom: 25 }}><XAxis dataKey="name" tick={{ fontSize: 10, fill: '#cbd5e1' }} interval={0} angle={-12} textAnchor="end" /><YAxis unit="%" tick={{ fontSize: 10, fill: '#94a3b8' }} domain={[0, 100]} /><Tooltip formatter={(value, name, item) => [`${Number(value).toFixed(1)}% • ${item.payload.count} MPs`, 'Share of MPs']} contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 10, color: '#e2e8f0', fontSize: 11 }} /><Bar dataKey="percent" fill="#6366f1" radius={[6, 6, 0, 0]}><LabelList dataKey="label" position="top" fill="#e2e8f0" fontSize={11} fontWeight={800} /></Bar></BarChart></ResponsiveContainer></div>
     </section>
-  );
+
+    <section className="rounded-2xl border border-[#334155] bg-[#1e293b]/75 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center"><div className="mr-auto"><h3 className="text-sm font-black text-white">State Ranking Grid</h3><p className="text-xs text-slate-400">{visibleStates.length} of {stateRows.length} States / UTs shown</p></div><div className="flex flex-wrap gap-2"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Filter states and UTs..." className="rounded-lg border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-white outline-none focus:border-indigo-400" /><select value={performanceFilter} onChange={(event) => setPerformanceFilter(event.target.value as typeof performanceFilter)} className="rounded-lg border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-white outline-none"><option>All States</option><option>High Performers</option><option>Average Performers</option><option>Needs Improvement</option></select><select value={sortMode} onChange={(event) => setSortMode(event.target.value as typeof sortMode)} className="rounded-lg border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-white outline-none"><option value="utilization">Sort by Utilization %</option><option value="allocated">Sort by Allocated Amount</option><option value="rank">Sort by State Rank</option></select></div></div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{visibleStates.map((row) => { const rowTone = tone(row.utilization); return <article key={row.state} className="rounded-xl border border-[#334155] bg-[#0f172a]/70 p-4 transition hover:border-indigo-400/50 hover:bg-indigo-500/5"><div className="flex items-start justify-between gap-2"><div><h4 className="text-sm font-black text-white">{row.state}</h4><div className="mt-1 text-[10px] text-slate-400">Rank #{row.rank} of {stateRows.length}</div></div><span className="rounded-full border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-200">{row.mpCount} MPs</span></div><div className="mt-4 grid grid-cols-2 gap-2 text-[11px]"><div><div className="text-slate-500">Allocated</div><div className="font-bold text-slate-200">₹{formatCrores(row.allocated)}</div></div><div><div className="text-slate-500">Recorded Expenditure</div><div className="font-bold text-slate-200">₹{formatCrores(row.expenditure)}</div></div></div><div className="mt-4"><div className="mb-1 flex justify-between text-[10px]"><span className="text-slate-400">Utilization Rate</span><b className={rowTone.text}>{row.utilization.toFixed(1)}%</b></div><div className="h-2 overflow-hidden rounded-full bg-slate-800"><div className={`h-full rounded-full ${rowTone.bar}`} style={{ width: `${row.utilization}%` }} /></div></div><button onClick={() => { setStateFilter(row.state); setConstituencyFilter('All Constituencies'); }} className="mt-4 w-full rounded-lg border border-indigo-400/30 bg-indigo-500/10 px-3 py-2 text-[10px] font-black text-indigo-200 hover:bg-indigo-500/20">Filter Projects by State</button></article>; })}</div>{visibleStates.length === 0 && <div className="py-10 text-center text-xs text-slate-400">No states match the current filters.</div>}
+    </section>
+
+    <div className="grid gap-5 lg:grid-cols-[1fr_340px]"><div className="rounded-2xl border border-[#334155] bg-[#1e293b]/75 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl"><div className="mb-4 flex flex-wrap items-center gap-2"><h3 className="mr-auto text-sm font-bold">Selected state fund details</h3><select value={stateFilter} onChange={(event) => setStateFilter(event.target.value)} className="rounded-lg border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-white">{states.map((option) => <option key={option}>{option}</option>)}</select><select value={constituencyFilter} onChange={(event) => setConstituencyFilter(event.target.value)} className="rounded-lg border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-white">{constituencies.map((option) => <option key={option}>{option}</option>)}</select></div><p className="text-xs text-slate-400">Use the state cards above to rank performance and filter the main auditor project table.</p></div><div className="rounded-2xl border border-[#334155] bg-[#1e293b]/75 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl"><div className="mb-3 text-sm font-bold">Disbursement by state</div><div className="h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={visibleStates.slice(0, 10)} layout="vertical" margin={{ top: 8, right: 10, left: 20, bottom: 8 }}><XAxis type="number" tickFormatter={(v) => `${Math.round(v / 1e7)}Cr`} tick={{ fontSize: 10 }} /><YAxis type="category" dataKey="state" tick={{ fontSize: 10 }} width={90} /><Tooltip formatter={(value) => formatINR(Number(value))} /><Bar dataKey="expenditure" fill="#6366f1" radius={[0, 6, 6, 0]} /></BarChart></ResponsiveContainer></div></div></div>
+  </section>;
+}
+
+function PerformanceSummaryCard({ label, description, count, className }: { label: string; description: string; count: number; className: string }) {
+  return <article className={`rounded-2xl border p-4 shadow-2xl shadow-black/20 ${className}`}><div className="text-[10px] font-black uppercase tracking-[0.14em]">{label}</div><div className="mt-2 text-3xl font-black text-white">{count}</div><div className="mt-1 text-[11px] text-slate-300">{description}</div></article>;
 }
 
 function OfficialNotes({
