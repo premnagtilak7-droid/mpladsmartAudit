@@ -27,26 +27,39 @@ function HeatLayer({ assets }: { assets: MapAsset[] }) {
   return null;
 }
 
+function MapSizeFix() {
+  const map = useMap();
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => map.invalidateSize(), 200);
+    return () => window.clearTimeout(timeoutId);
+  }, [map]);
+
+  return null;
+}
+
 export default function AssetMap({ assets, onSelect, mode = 'pins' }: { assets: MapAsset[]; onSelect: (asset: Project) => void; mode?: MapMode }) {
-  const center: LatLngExpression = [22.5, 79];
+  const center: LatLngExpression = [20.5937, 78.9629];
   return (
-    <MapContainer
-      center={center}
-      zoom={5}
-      minZoom={3}
-      maxZoom={18}
-      scrollWheelZoom
-      style={{ height: '100%', width: '100%', background: '#0b132b' }}
-      className="h-[410px] w-full"
-    >
-      <TileLayer
-        attribution="&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors &copy; <a href='https://carto.com/attributions'>CARTO</a>"
-        url={`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${process.env.NEXT_PUBLIC_CARTO_API_KEY || 'cb1_3h01_1_8b1ab8cc98b1a6acf0813486'}`}
+    <div className="relative h-[450px] min-h-[450px] w-full overflow-hidden rounded-xl border border-slate-800 bg-[#0b132b]">
+      <MapContainer
+        center={center}
+        zoom={5}
         minZoom={3}
         maxZoom={18}
-      />
-      {mode === 'heatmap' && <HeatLayer assets={assets} />}
-      {mode === 'pins' && assets.map((asset) => {
+        scrollWheelZoom={false}
+        style={{ height: '100%', width: '100%', background: '#0b132b' }}
+        className="h-full w-full"
+      >
+        <MapSizeFix />
+        <TileLayer
+          attribution="&copy; OpenStreetMap &copy; CARTO"
+          url={`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${process.env.NEXT_PUBLIC_CARTO_API_KEY || 'cb1_3h01_1_8b1ab8cc98b1a6acf0813486'}`}
+          minZoom={3}
+          maxZoom={18}
+        />
+        {mode === 'heatmap' && <HeatLayer assets={assets} />}
+        {mode === 'pins' && assets.map((asset) => {
         const completed = /completed|success/i.test(`${asset.status || ''} ${asset.payment_status || ''}`);
         const highRisk = (asset.risk_score || 0) >= 80 || asset.anomaly_type === 'Duplicate Location';
         const color = highRisk ? '#ef4444' : completed ? '#22c55e' : '#f59e0b';
@@ -67,7 +80,8 @@ export default function AssetMap({ assets, onSelect, mode = 'pins' }: { assets: 
             </CircleMarker>
           </span>
         );
-      })}
-    </MapContainer>
+        })}
+      </MapContainer>
+    </div>
   );
 }
