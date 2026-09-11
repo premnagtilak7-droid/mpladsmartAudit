@@ -30,10 +30,18 @@ function HeatLayer({ assets }: { assets: MapAsset[] }) {
 export default function AssetMap({ assets, onSelect, mode = 'pins' }: { assets: MapAsset[]; onSelect: (asset: Project) => void; mode?: MapMode }) {
   const center: LatLngExpression = [22.5, 79];
   return (
-    <MapContainer center={center} zoom={5} minZoom={3} maxZoom={18} scrollWheelZoom style={{ height: '100%', width: '100%', background: '#0b132b' }} className="h-[410px] w-full">
+    <MapContainer
+      center={center}
+      zoom={5}
+      minZoom={3}
+      maxZoom={18}
+      scrollWheelZoom
+      style={{ height: '100%', width: '100%', background: '#0b132b' }}
+      className="h-[410px] w-full"
+    >
       <TileLayer
-        attribution="&copy; Esri &mdash; Esri, DeLorme, NAVTEQ"
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+        attribution="&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors &copy; <a href='https://carto.com/attributions'>CARTO</a>"
+        url={`https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${process.env.NEXT_PUBLIC_CARTO_API_KEY || 'cb1_3h01_1_8b1ab8cc98b1a6acf0813486'}`}
         minZoom={3}
         maxZoom={18}
       />
