@@ -30,10 +30,12 @@ function HeatLayer({ assets }: { assets: MapAsset[] }) {
 export default function AssetMap({ assets, onSelect, mode = 'pins' }: { assets: MapAsset[]; onSelect: (asset: Project) => void; mode?: MapMode }) {
   const center: LatLngExpression = [22.5, 79];
   return (
-    <MapContainer center={center} zoom={5} scrollWheelZoom className="h-[410px] w-full bg-[#0b132b]">
+    <MapContainer center={center} zoom={5} minZoom={3} maxZoom={18} scrollWheelZoom className="h-[410px] w-full bg-[#0b132b]">
       <TileLayer
-        attribution="&copy; OpenStreetMap contributors &copy; CARTO"
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        attribution="&copy; Esri &mdash; Esri, DeLorme, NAVTEQ"
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+        minZoom={3}
+        maxZoom={18}
       />
       {mode === 'heatmap' && <HeatLayer assets={assets} />}
       {mode === 'pins' && assets.map((asset) => {
