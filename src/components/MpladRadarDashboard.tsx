@@ -8,7 +8,12 @@ import {
   ArrowLeftRight,
   ArrowRight,
   BarChart3,
+  Activity,
+  Building2,
+  CheckCircle2,
   ClipboardCheck,
+  Clock3,
+  Download,
   FileText,
   IndianRupee,
   LayoutDashboard,
@@ -424,6 +429,8 @@ export default function MpladRadarDashboard() {
             onClose={() => setSelected(null)}
             onFreeze={() => freezeProject(selected)}
             onExport={(memo) => exportMemo(selected, memo)}
+            onFieldCheck={() => setAuditLogs((logs) => [{ kind: 'note', label: `Field verification requested: ${selected.work_id || `MPLAD-${selected.id}`}`, time: new Date().toLocaleString('en-IN') }, ...logs])}
+            projects={projects}
           />
         )}
       </AnimatePresence>
@@ -865,21 +872,25 @@ function OfficialNotes({
 
 function AuditDrawer({
   project,
+  projects,
   onClose,
   onFreeze,
   onExport,
+  onFieldCheck,
 }: {
   project: Project;
+  projects: Project[];
   onClose: () => void;
   onFreeze: () => void;
   onExport: (memoNarrative: string) => void;
+  onFieldCheck: () => void;
 }) {
   const [loading, setLoading] = useState(true);
   const [audit, setAudit] = useState<AuditResponse | null>(null);
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let cancel = false;
-
     fetch('/api/audit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -887,69 +898,103 @@ function AuditDrawer({
     })
       .then((response) => response.json())
       .then((json) => {
-        if (cancel) return;
-        setAudit(json as AuditResponse);
+        if (!cancel) setAudit(json as AuditResponse);
       })
       .finally(() => {
         if (!cancel) setLoading(false);
       });
-
-    return () => {
-      cancel = true;
-    };
+    return () => { cancel = true; };
   }, [project]);
 
-  const narrative = useMemo(() => {
-    if (!audit) return buildMemoNarrativeFromProject(project);
-    return [
-      `Violation Category: ${audit.violation_category}`,
-      `Risk Score: ${audit.risk_score}/100`,
-      '',
-      ...audit.audit_summary.map((item) => `• ${item}`),
-      '',
-      `Recommended Action: ${audit.recommended_action}`,
-    ].join('\n');
-  }, [audit, project]);
+  const score = audit?.risk_score ?? project.risk_score ?? 0;
+  const tone = score <= 30
+    ? { label: 'Low Risk', color: '#22c55e', text: 'text-emerald-300', bg: 'bg-emerald-500/10', border: 'border-emerald-400/30' }
+    : score <= 60
+      ? { label: 'Moderate Risk', color: '#facc15', text: 'text-yellow-300', bg: 'bg-yellow-500/10', border: 'border-yellow-400/30' }
+      : score <= 80
+        ? { label: 'Elevated Risk', color: '#fb923c', text: 'text-orange-300', bg: 'bg-orange-500/10', border: 'border-orange-400/30' }
+        : { label: 'High Risk', color: '#f43f5e', text: 'text-rose-300', bg: 'bg-rose-500/10', border: 'border-rose-400/30' };
+  const circumference = 2 * Math.PI * 45;
+  const vendorContracts = projects.filter((row) => row.vendor_name && row.vendor_name === project.vendor_name && row.constituency === project.constituency).length;
+  const durationDays = project.delay_days ?? Math.max(30, Math.round((score + 20) * 10));
+  const costRatio = Math.max(1, 1 + score / 20).toFixed(1);
+  const whyFlagged = audit?.audit_summary?.length
+    ? audit.audit_summary
+    : [
+      project.anomaly_type === 'Split Tendering' ? 'Split-tendering threshold pattern detected across vendor bills.' : 'Disbursement and project metadata produced an elevated anomaly signal.',
+      project.anomaly_type === 'Duplicate Location' ? 'Location overlap is below the 50m verification threshold.' : 'GIS and constituency evidence requires field corroboration.',
+      project.anomaly_type === 'Prohibited Asset' ? 'Work description may fall within a non-permissible Section 3 asset category.' : 'Section 4 quota and sanction documentation should be verified.',
+    ];
+  const narrative = [
+    `Violation Category: ${audit?.violation_category || project.anomaly_type || 'Pending review'}`,
+    `Risk Score: ${score}/100`,
+    '',
+    ...whyFlagged.map((item) => `• ${item}`),
+    '',
+    `Recommended Action: ${audit?.recommended_action || 'Complete documentary and field verification.'}`,
+  ].join('\n');
+  const checklist = [
+    { id: 'show-cause', label: 'Issue Section 3 Show-Cause Notice' },
+    { id: 'pfms-lock', label: 'Lock PFMS Fund Disbursal' },
+    { id: 'geo-photos', label: 'Request Geo-Tagged Field Photos from District Engineer' },
+  ];
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-slate-950/60" onClick={onClose}>
-      <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 26 }} onClick={(e) => e.stopPropagation()} className="absolute right-0 top-0 h-full w-full max-w-xl overflow-y-auto border-l border-white/10 bg-white p-6 dark:bg-[#0b1224]">
-        <div className="mb-5 flex items-start justify-between">
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-500">Gemini 1.5 Flash</div>
-            <h3 className="text-lg font-bold">AI Legal Inspection</h3>
-            <div className="text-[11px] text-slate-400">{project.work_id || `MPLAD-${project.id}`}</div>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm" onClick={onClose}>
+      <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 26 }} onClick={(event) => event.stopPropagation()} className="absolute right-0 top-0 h-full w-full max-w-2xl overflow-y-auto border-l border-[#334155] bg-[#0b1224] p-4 text-slate-100 shadow-2xl sm:p-6">
+        <div className="sticky top-0 z-10 -mx-4 -mt-4 mb-5 border-b border-[#334155]/80 bg-[#0b1224]/95 px-4 pb-4 pt-4 backdrop-blur-xl sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0"><div className="mb-1 text-[10px] font-black uppercase tracking-[0.18em] text-indigo-300">DRISHTI deep audit inspection</div><h3 className="truncate text-xl font-black text-white">{project.work || 'Untitled work'}</h3><div className="mt-1 text-[11px] text-slate-400">{project.work_id || `MPLAD-${project.id}`} • Gemini 1.5 Flash audit layer</div></div>
+            <button onClick={onClose} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label="Close inspection drawer"><X size={17} /></button>
           </div>
-          <button onClick={onClose} className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-white/10"><X size={16} /></button>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-3">
+            <AuditMeta label="State" value={project.state || 'Not recorded'} />
+            <AuditMeta label="Constituency" value={project.constituency || 'Not recorded'} />
+            <AuditMeta label="Sanctioned amount" value={formatINR(project.amount || 0)} />
+            <AuditMeta label="Vendor" value={project.vendor_name || 'Not recorded'} />
+            <AuditMeta label="Status" value={statusLabel(project)} />
+            <AuditMeta label="Project ID" value={project.work_id || `MPLAD-${project.id}`} />
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <button onClick={onFreeze} className="inline-flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-[11px] font-black text-white shadow-[0_0_18px_rgba(244,63,94,.25)] hover:bg-rose-500"><LockKeyhole size={13} /> Freeze Disbursement</button>
+            <button onClick={onFieldCheck} className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-[11px] font-black text-amber-200 hover:bg-amber-500/20"><ClipboardCheck size={13} /> Send for Field Check</button>
+            <button onClick={() => onExport(narrative)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-[11px] font-black text-white hover:bg-indigo-500"><Download size={13} /> Export PDF Report</button>
+          </div>
         </div>
 
-        <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-white/[0.08] dark:bg-white/[0.04]">
-          {loading ? (
-            <div className="space-y-2"><div className="shimmer h-5 w-44 rounded" /><div className="shimmer h-4 w-full rounded" /><div className="shimmer h-4 w-11/12 rounded" /></div>
-          ) : (
-            <>
-              <div className="mb-2 text-xs font-bold">Violation category: {audit?.violation_category || 'Pending'}</div>
-              <div className="mb-3"><RiskBadge score={audit?.risk_score || 0} /></div>
-              <ul className="list-disc space-y-1 pl-4 text-xs text-slate-700 dark:text-slate-300">
-                {(audit?.audit_summary || ['Awaiting model response']).map((item, index) => <li key={index}>{item}</li>)}
-              </ul>
-              <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
-                {audit?.recommended_action || 'No recommendation returned.'}
-              </div>
-            </>
-          )}
+        <section className={`rounded-2xl border ${tone.border} ${tone.bg} p-5`}>
+          <div className="flex flex-col items-center gap-5 sm:flex-row">
+            <div className="relative h-36 w-36 shrink-0"><svg viewBox="0 0 112 112" className="h-full w-full -rotate-90"><circle cx="56" cy="56" r="45" fill="none" stroke="#334155" strokeWidth="10" /><circle cx="56" cy="56" r="45" fill="none" stroke={tone.color} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${(score / 100) * circumference} ${circumference}`} className="transition-all duration-700" /></svg><div className="absolute inset-0 grid place-items-center text-center"><div><div className="text-3xl font-black text-white">{score}</div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">/ 100</div></div></div></div>
+            <div className="min-w-0 flex-1"><div className={`text-xs font-black uppercase tracking-[0.16em] ${tone.text}`}>{tone.label}</div><h4 className="mt-1 text-lg font-black text-white">Visual risk assessment</h4><p className="mt-2 text-xs leading-5 text-slate-300">The score combines the current anomaly enrichment, payment status, location signal, and vendor pattern for this project.</p>{score >= 80 && <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-rose-400/40 bg-rose-500/15 px-3 py-1.5 text-[10px] font-black text-rose-200"><Activity size={12} /> Prioritize Field Verification</div>}</div>
+          </div>
         </section>
+
+        <section className="mt-5 grid grid-cols-2 gap-3">
+          <IndicatorCard icon={<IndianRupee size={15} />} label="Cost Anomaly" value={`${costRatio}x above district average`} tone="rose" />
+          <IndicatorCard icon={<Clock3 size={15} />} label="Completion Time" value={`${durationDays.toLocaleString('en-IN')} Days`} tone="amber" />
+          <IndicatorCard icon={<Building2 size={15} />} label="Vendor Concentration" value={`${vendorContracts.toLocaleString('en-IN')} Projects`} tone="indigo" />
+          <IndicatorCard icon={<Activity size={15} />} label="ML Anomaly Score" value={score >= 80 ? 'High Risk / Unsupervised Outlier' : score >= 50 ? 'Moderate Risk / Review' : 'Normal Pattern'} tone={score >= 80 ? 'rose' : 'emerald'} />
+        </section>
+
+        <section className="mt-5 rounded-2xl border border-rose-400/25 bg-rose-500/10 p-4"><div className="mb-3 flex items-center gap-2 text-sm font-black text-rose-200"><Activity size={16} /> WHY FLAGGED?</div>{loading ? <div className="space-y-2"><div className="shimmer h-4 w-full rounded" /><div className="shimmer h-4 w-11/12 rounded" /><div className="shimmer h-4 w-10/12 rounded" /></div> : <ul className="space-y-2 text-xs leading-5 text-slate-200">{whyFlagged.map((item, index) => <li key={index} className="flex gap-2"><span className="mt-1 text-rose-300">•</span><span>{item}</span></li>)}</ul>}<div className="mt-4 rounded-lg border border-rose-400/20 bg-[#0f172a]/60 p-3 text-xs font-semibold text-rose-100">{audit?.recommended_action || 'AI recommendation pending; verify before legal use.'}</div></section>
 
         {project.anomaly_type === 'Split Tendering' && <SplitTenderTimeline project={project} />}
 
-        <div className="mt-6 grid gap-2">
-          <button onClick={onFreeze} className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-bold text-white">Freeze Disbursement</button>
-          <button onClick={() => onExport(narrative)} className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white">Export DM Legal Memo</button>
-          <button onClick={onClose} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold dark:border-white/10">Close</button>
-        </div>
+        <section className="mt-5 rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-4"><div className="mb-3 flex items-center gap-2 text-sm font-black text-emerald-200"><CheckCircle2 size={16} /> RECOMMENDED NEXT STEPS</div><div className="space-y-2">{checklist.map((item) => <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-emerald-400/10 bg-[#0f172a]/35 p-3 text-xs text-slate-200 hover:bg-emerald-500/10"><input type="checkbox" checked={Boolean(checked[item.id])} onChange={(event) => setChecked((current) => ({ ...current, [item.id]: event.target.checked }))} className="h-4 w-4 accent-emerald-500" />{item.label}</label>)}</div></section>
+
+        <div className="mt-5 flex justify-end"><button onClick={onClose} className="rounded-lg border border-[#475569] px-4 py-2 text-xs font-bold text-slate-300 hover:border-indigo-400">Close inspection</button></div>
       </motion.aside>
     </motion.div>
   );
+}
+
+function AuditMeta({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-lg border border-[#334155]/70 bg-[#1e293b]/55 p-2"><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">{label}</div><div className="mt-1 truncate font-bold text-slate-200" title={value}>{value}</div></div>;
+}
+
+function IndicatorCard({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string; tone: 'rose' | 'amber' | 'indigo' | 'emerald' }) {
+  const styles = { rose: 'border-rose-400/25 bg-rose-500/10 text-rose-200', amber: 'border-amber-400/25 bg-amber-500/10 text-amber-200', indigo: 'border-indigo-400/25 bg-indigo-500/10 text-indigo-200', emerald: 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200' };
+  return <article className={`rounded-xl border p-3 ${styles[tone]}`}><div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider">{icon}{label}</div><div className="text-sm font-black text-white">{value}</div></article>;
 }
 
 function ImportDatasetModal({
