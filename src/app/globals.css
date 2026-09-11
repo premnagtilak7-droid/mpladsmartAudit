@@ -98,12 +98,8 @@ body {
 }
 .mplad-risk-pulse { animation: mplad-risk-pulse 1.3s ease-in-out infinite; }
 @keyframes mplad-risk-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
-.leaflet-tile {
-  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) !important;
-}
 .leaflet-container {
-  background: #0b132b !important;
-  font-family: var(--font-sans);
+  background-color: #0b132b !important;
 }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #0f172a; color: #e2e8f0; border: 1px solid #334155; }
 .leaflet-control-zoom a { background: #0f172a !important; color: #e2e8f0 !important; border-color: #334155 !important; }
