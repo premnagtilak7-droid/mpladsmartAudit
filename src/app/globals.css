@@ -100,6 +100,16 @@ body {
 @keyframes mplad-risk-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 .leaflet-container {
   background-color: #0b132b !important;
+  touch-action: none !important;
+  pointer-events: auto !important;
+}
+.map-touchpad-container {
+  touch-action: none !important;
+  pointer-events: auto !important;
+}
+.user-location-marker-wrapper {
+  background: transparent !important;
+  border: none !important;
 }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #0f172a; color: #e2e8f0; border: 1px solid #334155; }
 .leaflet-control-zoom a { background: #0f172a !important; color: #e2e8f0 !important; border-color: #334155 !important; }
