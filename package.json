@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:scoring": "tsc src/lib/ingest.ts src/lib/mospiScoring.ts scripts/score-smoke.test.ts --outDir .tmp-test --module commonjs --target es2020 --moduleResolution node --esModuleInterop --skipLibCheck --strict false && node .tmp-test/scripts/score-smoke.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

@@ -4,7 +4,7 @@ import { Header } from '@/components/Header';
 import { ExecutiveCommandHub } from '@/components/ExecutiveCommandHub';
 import { OperationalWorkflowHub } from '@/components/OperationalWorkflowHub';
 import { RiskPassportDrawer } from '@/components/RiskPassportDrawer';
-import { DataIngestionAuditPanel } from '@/components/DataIngestionAuditPanel';
+import { DataIngestionTab } from '@/components/DataIngestionTab';
 import { useAuth } from '@/lib/AuthContext';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -740,7 +740,7 @@ export default function MpladRadarDashboard() {
             )}
 
             {activeTab === 'ingestion' && (
-              <DataIngestionAuditPanel
+              <DataIngestionTab
                 canPurge={canAccessAdminOnly}
                 recordCount={recordCount || projects.length}
                 live={live}
@@ -748,18 +748,18 @@ export default function MpladRadarDashboard() {
                   setAuditLogs((s) => [
                     {
                       kind: 'note',
-                      label: `Ingested ${summary.projects_written.toLocaleString('en-IN')} projects & ${summary.signals_written.toLocaleString('en-IN')} anomaly signals via /api/ingest`,
+                      label: `Ingested ${summary.projects_written.toLocaleString('en-IN')} projects & ${summary.signals_written.toLocaleString('en-IN')} anomaly signals via /api/ingest-mospi (${summary.summary.high_risk_projects.toLocaleString('en-IN')} high-risk flagged)`,
                       time: new Date().toLocaleString('en-IN'),
                     },
                     ...s,
                   ]);
                   reload();
                 }}
-                onPurged={() => {
+                onPurged={(remaining) => {
                   setAuditLogs((s) => [
                     {
                       kind: 'note',
-                      label: 'Database purged: officer_audit_logs, anomaly_signals, projects (CASCADE)',
+                      label: `Database purged via /api/admin/purge-db: projects, anomaly_signals, officer_audit_logs, statutory_reports — ${remaining} records remaining`,
                       time: new Date().toLocaleString('en-IN'),
                     },
                     ...s,

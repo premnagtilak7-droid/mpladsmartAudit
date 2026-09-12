@@ -184,6 +184,36 @@ $$;
 revoke all on function public.purge_audit_tables() from public;
 revoke all on function public.purge_audit_tables() from anon, authenticated;
 
+-- ============================================================================
+-- 7. purge_all_tables() — FULL reset RPC
+--    Executed by /api/admin/purge-db. Differs from purge_audit_tables():
+--      • covers ALL FOUR tables (adds statutory_reports)
+--      • uses RESTART IDENTITY so any serial/identity sequences owned by these
+--        tables are reset back to their start value
+--    UUID primary keys (gen_random_uuid()) have no sequence to reset; the
+--    RESTART IDENTITY clause makes this function equally correct if any table
+--    is later migrated to a serial/bigserial key.
+-- ============================================================================
+create or replace function public.purge_all_tables()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    truncate table
+        public.officer_audit_logs,
+        public.anomaly_signals,
+        public.projects,
+        public.statutory_reports
+    restart identity
+    cascade;
+end;
+$$;
+
+revoke all on function public.purge_all_tables() from public;
+revoke all on function public.purge_all_tables() from anon, authenticated;
+
 commit;
 
 -- ============================================================================
