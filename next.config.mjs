@@ -2,8 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   images: { unoptimized: true },
-  // Allow static export compatibility via Cloudflare pages (OpenNext handles the
-  // build; these flags keep the asset pipeline sane).
+  // Deployed natively on Vercel (Next.js App Router). Lint/type errors are
+  // surfaced locally via `npm run lint` and `npx tsc --noEmit` rather than
+  // blocking production builds.
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
 };
