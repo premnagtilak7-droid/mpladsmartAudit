@@ -20,6 +20,7 @@ import {
   Check,
   KeyRound,
   Filter,
+  Printer,
 } from 'lucide-react';
 import { useAuth, PRESET_ACCOUNTS, type UserRole } from '@/lib/AuthContext';
 import { useTheme } from '@/components/ThemeProvider';
@@ -28,10 +29,20 @@ import type { Project } from '@/lib/types';
 interface HeaderProps {
   onSearchSelect?: (project: Project) => void;
   onOpenAnalysis?: () => void;
+  /** Fired by the "Run Analysis" CTA — performs a live recalculation pass. */
+  onRunAnalysis?: () => void;
+  /** Fired by the "Print Scheme Dossier" CTA — opens the browser print sheet. */
+  onPrintDossier?: () => void;
   projects?: Project[];
 }
 
-export function Header({ onSearchSelect, onOpenAnalysis, projects = [] }: HeaderProps) {
+export function Header({
+  onSearchSelect,
+  onOpenAnalysis,
+  onRunAnalysis,
+  onPrintDossier,
+  projects = [],
+}: HeaderProps) {
   const { user, loginAs, logoutToCitizen, switchModalOpen, setSwitchModalOpen, restrictedAlert, setRestrictedAlert } = useAuth();
   const { theme, toggle } = useTheme();
 
@@ -144,14 +155,30 @@ export function Header({ onSearchSelect, onOpenAnalysis, projects = [] }: Header
 
           {/* Right Action Controls */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Run Analysis CTA Button */}
+            {/* Run Analysis CTA Button — live recalculation pass */}
             <button
               type="button"
-              onClick={onOpenAnalysis}
+              onClick={onRunAnalysis || onOpenAnalysis}
               className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-500 shadow-md shadow-emerald-950/40 active:scale-95"
             >
               <Play size={13} fill="currentColor" />
               <span>Run Analysis</span>
+            </button>
+
+            {/* Print Scheme Dossier CTA — opens the browser print sheet */}
+            <button
+              type="button"
+              onClick={() => {
+                if (onPrintDossier) {
+                  onPrintDossier();
+                  return;
+                }
+                if (typeof window !== 'undefined') window.print();
+              }}
+              className="hidden md:inline-flex items-center gap-1.5 rounded-lg border border-slate-600/70 bg-[#0f172a] px-3 py-1.5 text-xs font-bold text-slate-200 transition hover:border-cyan-400/60 hover:text-white active:scale-95"
+            >
+              <Printer size={13} />
+              <span>Print Scheme Dossier</span>
             </button>
 
             {/* Theme Toggle */}

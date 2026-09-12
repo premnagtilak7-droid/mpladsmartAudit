@@ -4,10 +4,10 @@ import { Header } from '@/components/Header';
 import { ExecutiveCommandHub } from '@/components/ExecutiveCommandHub';
 import { OperationalWorkflowHub } from '@/components/OperationalWorkflowHub';
 import { RiskPassportDrawer } from '@/components/RiskPassportDrawer';
+import { DataIngestionAuditPanel } from '@/components/DataIngestionAuditPanel';
 import { useAuth } from '@/lib/AuthContext';
 
 import { useEffect, useMemo, useState } from 'react';
-import Papa from 'papaparse';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertTriangle,
@@ -19,10 +19,15 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Clock3,
+  Compass,
+  Copy,
+  Database,
   Download,
+  FileSearch,
   FileText,
   IndianRupee,
   LayoutDashboard,
+  Layers,
   LockKeyhole,
   Map as MapIcon,
   LayoutGrid,
@@ -31,10 +36,13 @@ import {
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
+  Printer,
   Radar,
   RefreshCw,
   Search,
   ShieldAlert,
+  ShieldCheck,
+  Sliders,
   Sun,
   Upload,
   X,
@@ -53,13 +61,26 @@ import { useProjects } from '@/lib/useProjects';
 import { useTheme } from '@/components/ThemeProvider';
 import { useLang } from '@/lib/i18n/LangContext';
 import { formatCrores, formatINR } from '@/lib/format';
-import { supabase } from '@/lib/supabase';
 import {
   ComplianceWidget,
   GISMapView,
   LegalMemoModal,
   SplitTenderTimeline,
 } from '@/components/AdvancedModules';
+import {
+  DEFAULT_WEIGHTS,
+  AllWorksBrowse,
+  CaseManagement,
+  DuplicateProposals,
+  GeospatialDistribution,
+  ModelCalibration,
+  OfficerAuditTrail,
+  StatutoryReports,
+  WorkflowWalkthroughModal,
+  recalibrateScores,
+  type CaseFile,
+  type RiskWeights,
+} from '@/components/OperationsModules';
 import type {
   AnomalyType,
   AuditResponse,
@@ -72,16 +93,6 @@ import { AuthorityWorkspace, CitizenPortal, type PortalLanguage } from '@/compon
 const PAGE_SIZE = 50;
 const MOSPI_BASELINE = '₹2,797.83 Cr';
 
-const prohibitedKeywords = [
-  'statue',
-  'religious',
-  'private',
-  'vehicle',
-  'office furniture',
-  'air conditioner',
-  'generator',
-];
-
 const defaultAnomalies: Array<'All Types' | AnomalyType> = [
   'All Types',
   'Duplicate Location',
@@ -92,11 +103,27 @@ const defaultAnomalies: Array<'All Types' | AnomalyType> = [
 
 type PortalRole = 'central' | 'citizen' | 'authority';
 
+/** STEP 3 — every operational module reachable from the left sidebar. */
+type ModuleId =
+  | 'overview'
+  | 'analytics'
+  | 'anomalies'
+  | 'all-works'
+  | 'geospatial'
+  | 'duplicates'
+  | 'cases'
+  | 'ingestion'
+  | 'statutory'
+  | 'audit'
+  | 'calibration'
+  | 'intelligence'
+  | 'notes';
+
 export default function MpladRadarDashboard() {
   const { projects, loading, error, live, recordCount, reload } = useProjects();
   const { theme, toggle } = useTheme();
   const { lang: language, setLang, t } = useLang();
-  const { user, isRestrictedForCitizen, setSwitchModalOpen } = useAuth();
+  const { user, isRestrictedForCitizen, setSwitchModalOpen, canAccessAdminOnly } = useAuth();
   const [role, setRole] = useState<PortalRole>('central');
   const [verifyId, setVerifyId] = useState('');
   const ui = { workspace: t('workspace'), overview: t('overview'), anomalies: t('anomalies'), intelligence: t('intelligence'), notes: t('notes'), refresh: t('refresh'), import: t('import'), command: t('command') };
@@ -119,10 +146,9 @@ export default function MpladRadarDashboard() {
     }
   }, [user.role]);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'anomalies' | 'intelligence' | 'notes'>('overview');
+  const [activeTab, setActiveTab] = useState<ModuleId>('overview');
   const [mobileNav, setMobileNav] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [showImport, setShowImport] = useState(false);
   const [query, setQuery] = useState('');
   const [stateFilter, setStateFilter] = useState('All States');
   const [constituencyFilter, setConstituencyFilter] = useState('All Constituencies');
@@ -139,6 +165,18 @@ export default function MpladRadarDashboard() {
 
   const [lockedProjects, setLockedProjects] = useState<Record<number, string>>({});
   const [auditLogs, setAuditLogs] = useState<Array<{ kind: 'freeze' | 'memo' | 'note'; label: string; time: string }>>([]);
+
+  // --- STEP 3 operational module state -----------------------------------
+  const [caseFiles, setCaseFiles] = useState<CaseFile[]>([]);
+  const [riskWeights, setRiskWeights] = useState<RiskWeights>({ ...DEFAULT_WEIGHTS });
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<{
+    scanned: number;
+    highRisk: number;
+    avgScore: number;
+    flaggedDelta: number;
+    at: string;
+  } | null>(null);
 
   const states = useMemo(
     () => ['All States', ...new Set(projects.map((p) => p.state || 'Unknown'))],
@@ -218,11 +256,122 @@ export default function MpladRadarDashboard() {
     ]);
   };
 
+  const pushLog = (kind: 'freeze' | 'memo' | 'note', label: string) => {
+    setAuditLogs((s) => [{ kind, label, time: new Date().toLocaleString('en-IN') }, ...s]);
+  };
+
+  // --- STEP 3: Case Management handlers -----------------------------------
+  const openCase = (project: Project) => {
+    if (isRestrictedForCitizen('Case Management Proceedings')) return;
+    const id = `CASE-${project.work_id || project.id}`;
+    setCaseFiles((files) => {
+      if (files.some((c) => c.projectId === project.id)) return files;
+      return [
+        {
+          id,
+          projectId: project.id,
+          workId: project.work_id || `MPLAD-${project.id}`,
+          title: project.work || 'Untitled work',
+          stage: 'intake' as const,
+          notes: `Inquiry opened — risk ${project.risk_score ?? 0}/100 in ${project.constituency || 'unknown PC'}.`,
+          updatedAt: new Date().toLocaleString('en-IN'),
+        },
+        ...files,
+      ];
+    });
+    pushLog('note', `Case opened for ${project.work_id || `MPLAD-${project.id}`}`);
+  };
+
+  const advanceCase = (caseId: string, stage: CaseFile['stage'], determination?: string) => {
+    setCaseFiles((files) =>
+      files.map((c) =>
+        c.id === caseId
+          ? {
+              ...c,
+              stage,
+              determination: determination ?? c.determination,
+              updatedAt: new Date().toLocaleString('en-IN'),
+            }
+          : c,
+      ),
+    );
+    const target = caseFiles.find((c) => c.id === caseId);
+    pushLog(
+      'note',
+      `Case ${target?.workId || caseId} advanced to ${stage}${determination ? ` — ${determination}` : ''}`,
+    );
+  };
+
+  const printCase = (caseFile: CaseFile) => {
+    pushLog('note', `Case dossier printed: ${caseFile.workId}`);
+    if (typeof window !== 'undefined') window.print();
+  };
+
+  // --- STEP 3: Run Analysis (live recalculation over Supabase data) -------
+  const runAnalysis = () => {
+    if (isRestrictedForCitizen('Model Calibration & Live AI Engine')) return;
+    const result = recalibrateScores(projects, riskWeights);
+    const highRisk = result.filter((r) => r.calibrated >= 80).length;
+    const baselineHigh = result.filter((r) => r.baseline >= 80).length;
+    const avgScore = result.length
+      ? Math.round(result.reduce((s, r) => s + r.calibrated, 0) / result.length)
+      : 0;
+
+    setAnalysisResult({
+      scanned: result.length,
+      highRisk,
+      avgScore,
+      flaggedDelta: highRisk - baselineHigh,
+      at: new Date().toLocaleString('en-IN'),
+    });
+    pushLog(
+      'note',
+      `Analysis pass complete — ${result.length.toLocaleString('en-IN')} works scored, ${highRisk.toLocaleString('en-IN')} high-risk flagged.`,
+    );
+  };
+
+  /** Navigate from the walkthrough modal to the matching operational module. */
+  const goToModule = (moduleId: string) => {
+    const map: Record<string, ModuleId> = {
+      ingestion: 'ingestion',
+      calibration: 'calibration',
+      anomalies: 'anomalies',
+      duplicates: 'duplicates',
+      geospatial: 'geospatial',
+      audit: 'audit',
+    };
+    setActiveTab(map[moduleId] || 'overview');
+  };
+
+  /**
+   * Routes an "Explore Engine" card from the 6-engine anomaly matrix into the
+   * operational module that owns that analysis.
+   */
+  const exploreEngine = (engine: string) => {
+    const map: Record<string, ModuleId> = {
+      cost_outlier: 'calibration',
+      timeline_delay: 'anomalies',
+      duplicate_matcher: 'duplicates',
+      geocamera: 'geospatial',
+      agency_monopoly: 'all-works',
+      audit_ledger: 'audit',
+    };
+    const target = map[engine] || 'anomalies';
+    setActiveTab(target);
+    if (target === 'overview') setOverviewMode('matrix');
+    pushLog('note', `Explore Engine → ${engine.replace(/_/g, ' ')} module opened`);
+  };
+
   return (
     <div className="min-h-screen bg-[#0b132b] text-slate-100 selection:bg-indigo-500/30">
       <Header
         projects={projects}
         onSearchSelect={(item) => setPassportProject(item)}
+        onRunAnalysis={runAnalysis}
+        onPrintDossier={() => {
+          pushLog('note', 'Scheme dossier print sheet opened');
+          if (typeof window !== 'undefined') window.print();
+        }}
         onOpenAnalysis={() => {
           if (isRestrictedForCitizen('Model Calibration & Live AI Engine')) return;
           setActiveTab('overview');
@@ -248,7 +397,7 @@ export default function MpladRadarDashboard() {
               active={activeTab === 'overview'}
               onClick={() => setActiveTab('overview')}
               icon={<LayoutGrid size={16} />}
-              label={ui.overview}
+              label="Overview & Workflow Hub"
               collapsed={sidebarCollapsed}
             />
             <SideItem
@@ -262,22 +411,65 @@ export default function MpladRadarDashboard() {
               active={activeTab === 'anomalies'}
               onClick={() => setActiveTab('anomalies')}
               icon={<AlertTriangle size={16} />}
-              label={ui.anomalies}
+              label="Prioritised Scrutiny Queue"
               badge={highRiskRows.length}
               collapsed={sidebarCollapsed}
             />
             <SideItem
-              active={activeTab === 'intelligence'}
-              onClick={() => setActiveTab('intelligence')}
-              icon={<LineChart size={16} />}
-              label={ui.intelligence}
+              active={activeTab === 'all-works'}
+              onClick={() => setActiveTab('all-works')}
+              icon={<Layers size={16} />}
+              label="All Works (Browse)"
               collapsed={sidebarCollapsed}
             />
             <SideItem
-              active={activeTab === 'notes'}
-              onClick={() => setActiveTab('notes')}
+              active={activeTab === 'geospatial'}
+              onClick={() => setActiveTab('geospatial')}
+              icon={<MapIcon size={16} />}
+              label="Geospatial Distribution"
+              collapsed={sidebarCollapsed}
+            />
+            <SideItem
+              active={activeTab === 'duplicates'}
+              onClick={() => setActiveTab('duplicates')}
+              icon={<Copy size={16} />}
+              label="Duplicate Proposals"
+              collapsed={sidebarCollapsed}
+            />
+            <SideItem
+              active={activeTab === 'cases'}
+              onClick={() => setActiveTab('cases')}
+              icon={<FileSearch size={16} />}
+              label="Case Management"
+              badge={caseFiles.length || undefined}
+              collapsed={sidebarCollapsed}
+            />
+            <SideItem
+              active={activeTab === 'ingestion'}
+              onClick={() => setActiveTab('ingestion')}
+              icon={<Database size={16} />}
+              label="Data Ingestion & Audit"
+              collapsed={sidebarCollapsed}
+            />
+            <SideItem
+              active={activeTab === 'statutory'}
+              onClick={() => setActiveTab('statutory')}
               icon={<FileText size={16} />}
-              label={ui.notes}
+              label="Statutory Reports"
+              collapsed={sidebarCollapsed}
+            />
+            <SideItem
+              active={activeTab === 'audit'}
+              onClick={() => setActiveTab('audit')}
+              icon={<ShieldCheck size={16} />}
+              label="Officer Audit Trail"
+              collapsed={sidebarCollapsed}
+            />
+            <SideItem
+              active={activeTab === 'calibration'}
+              onClick={() => setActiveTab('calibration')}
+              icon={<Sliders size={16} />}
+              label="Model Calibration"
               collapsed={sidebarCollapsed}
             />
           </nav>
@@ -299,15 +491,52 @@ export default function MpladRadarDashboard() {
               </div>
             )}
 
+            {/* Run Analysis success notification — driven by a real recalculation pass */}
+            {analysisResult && (
+              <div
+                id="analysis-notification"
+                className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-100 shadow-[0_0_28px_rgba(16,185,129,0.16)]"
+                role="status"
+                aria-live="polite"
+              >
+                <CheckCircle2 size={16} className="shrink-0 text-emerald-300" />
+                <span className="font-bold">
+                  Analysis pass complete — {analysisResult.scanned.toLocaleString('en-IN')} works rescored.
+                </span>
+                <span className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-2 py-0.5 font-bold">
+                  {analysisResult.highRisk.toLocaleString('en-IN')} high-risk flagged
+                </span>
+                <span className="rounded-full border border-indigo-400/40 bg-indigo-500/15 px-2 py-0.5 font-bold text-indigo-100">
+                  Avg risk {analysisResult.avgScore}
+                </span>
+                <span
+                  className={`rounded-full border px-2 py-0.5 font-bold ${
+                    analysisResult.flaggedDelta >= 0
+                      ? 'border-rose-400/40 bg-rose-500/15 text-rose-100'
+                      : 'border-sky-400/40 bg-sky-500/15 text-sky-100'
+                  }`}
+                >
+                  {analysisResult.flaggedDelta >= 0 ? '+' : ''}
+                  {analysisResult.flaggedDelta.toLocaleString('en-IN')} anomaly count vs baseline
+                </span>
+                <span className="ml-auto text-[10px] font-medium text-emerald-200/70">{analysisResult.at}</span>
+                <button
+                  type="button"
+                  onClick={() => setAnalysisResult(null)}
+                  aria-label="Dismiss analysis notification"
+                  className="rounded-lg p-1 text-emerald-200/70 transition hover:bg-white/10 hover:text-white"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            )}
+
             {activeTab === 'overview' && (
               <section className="space-y-6">
                 <ExecutiveCommandHub
                   projects={scopedProjects}
                   onInspectWork={(p) => setPassportProject(p)}
-                  onExploreEngine={(engine) => {
-                    setActiveTab('overview');
-                    setOverviewMode('matrix');
-                  }}
+                  onExploreEngine={exploreEngine}
                   onOpenScrutinyQueue={() => setActiveTab('anomalies')}
                 />
 
@@ -318,7 +547,7 @@ export default function MpladRadarDashboard() {
                     if (target) setPassportProject(target);
                   }}
                   onStepClick={(stepId) => {
-                    if (stepId === 1) setShowImport(true);
+                    if (stepId === 1) setActiveTab('ingestion');
                     else if (stepId === 2) {
                       setActiveTab('overview');
                       setOverviewMode('matrix');
@@ -424,10 +653,7 @@ export default function MpladRadarDashboard() {
                 <ExecutiveCommandHub
                   projects={scopedProjects}
                   onInspectWork={setSelected}
-                  onExploreEngine={(engine) => {
-                    setActiveTab('overview');
-                    setOverviewMode('matrix');
-                  }}
+                  onExploreEngine={exploreEngine}
                   onOpenScrutinyQueue={() => setActiveTab('anomalies')}
                 />
               </section>
@@ -443,6 +669,64 @@ export default function MpladRadarDashboard() {
               />
             )}
 
+            {activeTab === 'all-works' && (
+              <AllWorksBrowse
+                projects={projects}
+                lockedProjects={lockedProjects}
+                onInspect={(p) => setPassportProject(p)}
+                onFreeze={freezeProject}
+              />
+            )}
+
+            {activeTab === 'geospatial' && (
+              <GeospatialDistribution
+                projects={scopedProjects}
+                onInspect={(p) => setPassportProject(p)}
+              />
+            )}
+
+            {activeTab === 'duplicates' && (
+              <DuplicateProposals
+                projects={scopedProjects}
+                onInspect={(p) => setPassportProject(p)}
+              />
+            )}
+
+            {activeTab === 'cases' && (
+              <CaseManagement
+                projects={projects}
+                cases={caseFiles}
+                onOpenCase={openCase}
+                onAdvanceCase={advanceCase}
+                onInspect={(p) => setPassportProject(p)}
+                onPrintCase={printCase}
+              />
+            )}
+
+            {activeTab === 'statutory' && (
+              <StatutoryReports
+                projects={scopedProjects}
+                onInspect={(p) => setPassportProject(p)}
+              />
+            )}
+
+            {activeTab === 'audit' && (
+              <OfficerAuditTrail
+                entries={auditLogs}
+                officerName={user.name}
+                officerRole={user.roleLabel}
+              />
+            )}
+
+            {activeTab === 'calibration' && (
+              <ModelCalibration
+                projects={projects}
+                weights={riskWeights}
+                onWeightsChange={setRiskWeights}
+                onInspect={(p) => setPassportProject(p)}
+              />
+            )}
+
             {activeTab === 'intelligence' && (
               <FundIntelligence
                 projects={projects}
@@ -452,6 +736,36 @@ export default function MpladRadarDashboard() {
                 setConstituencyFilter={setConstituencyFilter}
                 states={states}
                 constituencies={constituencyOptions}
+              />
+            )}
+
+            {activeTab === 'ingestion' && (
+              <DataIngestionAuditPanel
+                canPurge={canAccessAdminOnly}
+                recordCount={recordCount || projects.length}
+                live={live}
+                onIngested={(summary) => {
+                  setAuditLogs((s) => [
+                    {
+                      kind: 'note',
+                      label: `Ingested ${summary.projects_written.toLocaleString('en-IN')} projects & ${summary.signals_written.toLocaleString('en-IN')} anomaly signals via /api/ingest`,
+                      time: new Date().toLocaleString('en-IN'),
+                    },
+                    ...s,
+                  ]);
+                  reload();
+                }}
+                onPurged={() => {
+                  setAuditLogs((s) => [
+                    {
+                      kind: 'note',
+                      label: 'Database purged: officer_audit_logs, anomaly_signals, projects (CASCADE)',
+                      time: new Date().toLocaleString('en-IN'),
+                    },
+                    ...s,
+                  ]);
+                  reload();
+                }}
               />
             )}
 
@@ -494,23 +808,26 @@ export default function MpladRadarDashboard() {
         />
       )}
 
-      {showImport && (
-        <ImportDatasetModal
-          onClose={() => setShowImport(false)}
-          onImported={(count, mode) => {
-            setAuditLogs((s) => [
-              {
-                kind: 'note',
-                label: `Imported ${count.toLocaleString('en-IN')} records via ${mode}`,
-                time: new Date().toLocaleString('en-IN'),
-              },
-              ...s,
-            ]);
-            reload();
-            setShowImport(false);
-          }}
-        />
+      {/* Floating Workflow Walkthrough trigger */}
+      {role === 'central' && !walkthroughOpen && (
+        <button
+          type="button"
+          onClick={() => setWalkthroughOpen(true)}
+          className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full border border-indigo-400/50 bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-3 text-xs font-bold text-white shadow-[0_10px_40px_rgba(79,70,229,0.45)] transition hover:from-indigo-500 hover:to-blue-500 active:scale-95"
+          aria-label="Open the Workflow Walkthrough guide"
+        >
+          <Compass size={15} />
+          <span className="hidden sm:inline">Workflow Walkthrough</span>
+        </button>
       )}
+
+      {/* Interactive 6-step governance flow guide */}
+      <WorkflowWalkthroughModal
+        open={walkthroughOpen}
+        onClose={() => setWalkthroughOpen(false)}
+        onGoToModule={goToModule}
+      />
+
     </div>
   );
 }
@@ -1090,124 +1407,6 @@ function IndicatorCard({ icon, label, value, tone }: { icon: React.ReactNode; la
   return <article className={`rounded-xl border p-3 ${styles[tone]}`}><div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider">{icon}{label}</div><div className="text-sm font-black text-white">{value}</div></article>;
 }
 
-function ImportDatasetModal({
-  onClose,
-  onImported,
-}: {
-  onClose: () => void;
-  onImported: (count: number, mode: 'CSV' | 'JSON') => void;
-}) {
-  const [jsonInput, setJsonInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  const handleCsvFile = async (file: File) => {
-    setLoading(true);
-    setMessage(null);
-
-    Papa.parse<Record<string, unknown>>(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async ({ data }) => {
-        const records = mapImportedRecords(data);
-        const result = await upsertProjects(records);
-        setLoading(false);
-        if (result.ok) {
-          setMessage(`Imported ${records.length.toLocaleString('en-IN')} CSV records.`);
-          onImported(records.length, 'CSV');
-        } else {
-          setMessage(`Import failed: ${result.error}`);
-        }
-      },
-      error: (error) => {
-        setLoading(false);
-        setMessage(error.message);
-      },
-    });
-  };
-
-  const handleJsonImport = async () => {
-    try {
-      setLoading(true);
-      const parsed = JSON.parse(jsonInput);
-      const rows = Array.isArray(parsed) ? parsed : parsed.records;
-      if (!Array.isArray(rows)) {
-        throw new Error('JSON must be an array or { records: [] }.');
-      }
-      const records = mapImportedRecords(rows as Record<string, unknown>[]);
-      const result = await upsertProjects(records);
-      setLoading(false);
-      if (result.ok) {
-        setMessage(`Imported ${records.length.toLocaleString('en-IN')} JSON records.`);
-        onImported(records.length, 'JSON');
-      } else {
-        setMessage(`Import failed: ${result.error}`);
-      }
-    } catch (error) {
-      setLoading(false);
-      setMessage(error instanceof Error ? error.message : 'Invalid JSON payload');
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/65 p-4" onClick={onClose}>
-      <article onClick={(e) => e.stopPropagation()} className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-white/10 dark:bg-[#0b1224]">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-bold">Import New MoSPI Dataset</h3>
-            <p className="text-xs text-slate-400">Drag & drop CSV or paste JSON. Records are parsed client-side and upserted to Supabase `projects`.</p>
-          </div>
-          <button onClick={onClose} className="rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-white/10"><X size={16} /></button>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <label
-            className="grid min-h-52 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-indigo-300 bg-indigo-50/60 p-4 text-center dark:border-indigo-500/40 dark:bg-indigo-500/10"
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={(event) => {
-              event.preventDefault();
-              const file = event.dataTransfer.files?.[0];
-              if (file) void handleCsvFile(file);
-            }}
-          >
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void handleCsvFile(file);
-              }}
-            />
-            <div>
-              <Upload className="mx-auto mb-2 text-indigo-500" size={18} />
-              <div className="text-xs font-bold">Drop CSV here or click to upload</div>
-              <div className="mt-1 text-[11px] text-slate-500">Uses PapaParse for column mapping and enrichment.</div>
-            </div>
-          </label>
-
-          <div className="space-y-2">
-            <textarea
-              value={jsonInput}
-              onChange={(e) => setJsonInput(e.target.value)}
-              placeholder='Paste JSON records, e.g. [{ "Work ID": "WS/1", "Work": "..." }]'
-              className="h-52 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-white/[0.04]"
-            />
-            <button onClick={handleJsonImport} disabled={loading || !jsonInput.trim()} className="w-full rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Import JSON Records</button>
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button onClick={downloadTemplateCsv} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold dark:border-white/10">Download sample template CSV</button>
-          <button onClick={downloadTemplateJson} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold dark:border-white/10">Download sample template JSON</button>
-          {loading && <span className="rounded-md bg-slate-100 px-2 py-1 text-[11px] dark:bg-white/10">Importing…</span>}
-          {message && <span className="rounded-md bg-emerald-50 px-2 py-1 text-[11px] text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">{message}</span>}
-        </div>
-      </article>
-    </div>
-  );
-}
-
 function normalizeStatus(project: Project): string {
   const raw = (project.status || project.stage || project.payment_status || project.approval_status || '').toLowerCase().trim();
   if (raw.includes('in-progress') || raw.includes('in progress') || raw.includes('ongoing')) return 'in-progress';
@@ -1229,11 +1428,6 @@ function statusLabel(project: Project): string {
   return project.payment_status || project.approval_status || 'Pending';
 }
 
-function isScStConstituency(value: string | null | undefined): boolean {
-  const text = (value || '').toUpperCase();
-  return /\bSC\b|\(SC\)|\bST\b|\(ST\)/.test(text);
-}
-
 function buildMemoNarrativeFromProject(project: Project): string {
   const category = (project.anomaly_type || 'Split Tendering') as ViolationCategory;
   return [
@@ -1245,231 +1439,4 @@ function buildMemoNarrativeFromProject(project: Project): string {
     '',
     'Recommended Action: Issue Section 3 Show-Cause Notice & Freeze Account.',
   ].join('\n');
-}
-
-function mapImportedRecords(rows: Record<string, unknown>[]) {
-  const vendorCounts = new Map<string, number>();
-  const locationCounts = new Map<string, number>();
-
-  for (const row of rows) {
-    const vendor = `${take(row, ['vendor_name', 'Vendor Name']) || ''}`.toLowerCase().trim();
-    const loc = `${take(row, ['Work', 'work']) || ''}|${take(row, ['Constituency', 'constituency']) || ''}`.toLowerCase().trim();
-    if (vendor) vendorCounts.set(vendor, (vendorCounts.get(vendor) || 0) + 1);
-    if (loc) locationCounts.set(loc, (locationCounts.get(loc) || 0) + 1);
-  }
-
-  return rows.map((row, index) => {
-    const work = take(row, ['work', 'Work']);
-    const workId = take(row, ['work_id', 'Work ID']);
-    const state = take(row, ['state', 'State']);
-    const constituency = take(row, ['constituency', 'Constituency']);
-    const mp = take(row, ['mp', "Hon'ble Members of Parliament"]);
-    const vendor = take(row, ['vendor_name', 'Vendor Name']);
-    const ida = take(row, ['ida', 'IDA']);
-    const status = take(row, ['payment_status', 'Payment Status', 'status', 'Status']) || 'Pending';
-    const amount = toNumber(take(row, ['amount', 'Fund Disbursed Amount ( ₹ )'])) || 0;
-    const srNo = take(row, ['sr_no', 'Sr. No.']) || `${index + 1}`;
-    const date = take(row, ['expenditure_date', 'Expenditure Date']);
-
-    const risk = deriveRisk({ work, constituency, vendor, amount, status }, vendorCounts, locationCounts);
-    const anomaly = deriveAnomaly({ work, constituency, vendor, amount, status }, vendorCounts, locationCounts);
-
-    const riskDrivers: RiskDriver[] = [
-      {
-        key: 'location',
-        label: 'Location Proximity',
-        score: anomaly === 'Duplicate Location' ? 90 : anomaly === 'Split Tendering' ? 58 : 35,
-        weight: 0.35,
-        note: 'Duplicate geo-tags and constituency overlaps are scanned for suspicious clustering.',
-      },
-      {
-        key: 'vendor',
-        label: 'Vendor Splitting',
-        score: anomaly === 'Split Tendering' ? 92 : 34,
-        weight: 0.35,
-        note: 'Repeated near-threshold billing by the same vendor is treated as tender splitting risk.',
-      },
-      {
-        key: 'budget',
-        label: 'Budget Pattern',
-        score: anomaly === 'Prohibited Asset' ? 95 : Math.min(85, Math.max(25, Math.round(risk * 0.9))),
-        weight: 0.3,
-        note: 'Outlier amount and prohibited keyword checks are converted into fiscal-risk scores.',
-      },
-    ];
-
-    return {
-      sr_no: srNo,
-      state,
-      work,
-      work_id: workId,
-      ida,
-      mp,
-      constituency,
-      expenditure_date: normalizeDateString(date),
-      vendor_name: vendor,
-      payment_status: status,
-      amount,
-      risk_score: risk,
-      anomaly_type: anomaly,
-      risk_drivers: riskDrivers,
-      approval_status: status.toLowerCase().includes('pending') ? 'Pending' : 'Approved',
-      completion_percent: status.toLowerCase().includes('completed') ? 100 : status.toLowerCase().includes('in-progress') ? 60 : 20,
-      'Sr. No.': toNumber(srNo),
-      State: state,
-      Work: work,
-      'Work ID': workId,
-      IDA: ida,
-      "Hon'ble Members of Parliament": mp,
-      Constituency: constituency,
-      'Expenditure Date': normalizeDateString(date),
-      'Vendor Name': vendor,
-      'Payment Status': status,
-      'Fund Disbursed Amount ( ₹ )': amount,
-    };
-  });
-}
-
-function deriveRisk(
-  row: { work: string; constituency: string; vendor: string; amount: number; status: string },
-  vendorCounts: Map<string, number>,
-  locationCounts: Map<string, number>,
-): number {
-  let score = 22;
-  const loweredWork = row.work.toLowerCase();
-  const vendorKey = row.vendor.toLowerCase().trim();
-  const locationKey = `${row.work}|${row.constituency}`.toLowerCase().trim();
-
-  if (prohibitedKeywords.some((keyword) => loweredWork.includes(keyword))) score += 38;
-  if ((vendorCounts.get(vendorKey) || 0) > 2 && row.amount >= 450000 && row.amount <= 500000) score += 36;
-  if ((locationCounts.get(locationKey) || 0) > 1) score += 24;
-  if (!isScStConstituency(row.constituency)) score += 8;
-  if (row.status.toLowerCase().includes('pending')) score += 4;
-
-  return Math.max(0, Math.min(100, Math.round(score)));
-}
-
-function deriveAnomaly(
-  row: { work: string; constituency: string; vendor: string; amount: number; status: string },
-  vendorCounts: Map<string, number>,
-  locationCounts: Map<string, number>,
-): AnomalyType {
-  const loweredWork = row.work.toLowerCase();
-  const vendorKey = row.vendor.toLowerCase().trim();
-  const locationKey = `${row.work}|${row.constituency}`.toLowerCase().trim();
-
-  if (prohibitedKeywords.some((keyword) => loweredWork.includes(keyword))) return 'Prohibited Asset';
-  if ((locationCounts.get(locationKey) || 0) > 1) return 'Duplicate Location';
-  if ((vendorCounts.get(vendorKey) || 0) > 2 && row.amount >= 450000 && row.amount <= 500000) return 'Split Tendering';
-  return 'Normal';
-}
-
-function take(row: Record<string, unknown>, keys: string[]): string {
-  for (const key of keys) {
-    const value = row[key];
-    if (value !== undefined && value !== null && `${value}`.trim() !== '') return `${value}`.trim();
-  }
-  return '';
-}
-
-function toNumber(value: unknown): number {
-  if (value === null || value === undefined) return 0;
-  const parsed = Number(`${value}`.replace(/[₹,\s]/g, ''));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function normalizeDateString(value: string): string | null {
-  const trimmed = `${value || ''}`.trim();
-  if (!trimmed) return null;
-  const candidate = new Date(trimmed);
-  if (Number.isNaN(candidate.getTime())) return trimmed;
-  return candidate.toISOString().slice(0, 10);
-}
-
-function downloadTemplateCsv() {
-  const sample = [
-    'Sr. No.,State,Work,Work ID,IDA,Hon\'ble Members of Parliament,Constituency,Expenditure Date,Vendor Name,Payment Status,Fund Disbursed Amount ( ₹ )',
-    '1,Uttar Pradesh,Construction of village roads,WS/MP1/2026/001,GHAZIABAD_IDA,ATUL GARG,GHAZIABAD,2026-08-21,DARSH BUILDCON,Payment In-Progress,799146',
-    '2,Odisha,Community hall construction,WS/MP2/2026/002,SUNDARGARH_IDA,Shri Jual Oram,SUNDARGARH (ST),2026-07-14,OB AND OC WWB,Completed,2150000',
-  ].join('\n');
-  downloadBlob(sample, 'mospi_template.csv', 'text/csv;charset=utf-8;');
-}
-
-function downloadTemplateJson() {
-  const sample = JSON.stringify(
-    [
-      {
-        'Sr. No.': 1,
-        State: 'Uttar Pradesh',
-        Work: 'Construction of village roads',
-        'Work ID': 'WS/MP1/2026/001',
-        IDA: 'GHAZIABAD_IDA',
-        "Hon'ble Members of Parliament": 'ATUL GARG',
-        Constituency: 'GHAZIABAD',
-        'Expenditure Date': '2026-08-21',
-        'Vendor Name': 'DARSH BUILDCON',
-        'Payment Status': 'Payment In-Progress',
-        'Fund Disbursed Amount ( ₹ )': 799146,
-      },
-    ],
-    null,
-    2,
-  );
-  downloadBlob(sample, 'mospi_template.json', 'application/json;charset=utf-8;');
-}
-
-function downloadBlob(content: string, fileName: string, mimeType: string) {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
-async function upsertProjects(records: Record<string, unknown>[]): Promise<{ ok: boolean; error?: string }> {
-  if (!supabase) return { ok: false, error: 'Supabase client unavailable.' };
-
-  // Try normalized-schema upsert first.
-  const normalized = records.map((record) => ({
-    sr_no: record.sr_no,
-    state: record.state,
-    work: record.work,
-    work_id: record.work_id,
-    ida: record.ida,
-    mp: record.mp,
-    constituency: record.constituency,
-    expenditure_date: record.expenditure_date,
-    vendor_name: record.vendor_name,
-    payment_status: record.payment_status,
-    amount: record.amount,
-    risk_score: record.risk_score,
-    anomaly_type: record.anomaly_type,
-    risk_drivers: record.risk_drivers,
-    approval_status: record.approval_status,
-    completion_percent: record.completion_percent,
-  }));
-
-  const normalizedResult = await supabase
-    .from('projects')
-    .upsert(normalized, { onConflict: 'work_id', ignoreDuplicates: false });
-
-  if (!normalizedResult.error) {
-    return { ok: true };
-  }
-
-  // Fallback for legacy raw-column schema.
-  const rawResult = await supabase
-    .from('projects')
-    .upsert(records as never[], { onConflict: 'Work ID', ignoreDuplicates: false });
-
-  if (!rawResult.error) {
-    return { ok: true };
-  }
-
-  return {
-    ok: false,
-    error: rawResult.error.message || normalizedResult.error.message,
-  };
 }
