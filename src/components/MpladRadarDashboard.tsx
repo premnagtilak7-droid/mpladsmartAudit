@@ -1,5 +1,8 @@
 'use client';
 
+import { Header } from '@/components/Header';
+import { useAuth } from '@/lib/AuthContext';
+
 import { useEffect, useMemo, useState } from 'react';
 import Papa from 'papaparse';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -90,6 +93,7 @@ export default function MpladRadarDashboard() {
   const { projects, loading, error, live, recordCount, reload } = useProjects();
   const { theme, toggle } = useTheme();
   const { lang: language, setLang, t } = useLang();
+  const { user, isRestrictedForCitizen, setSwitchModalOpen } = useAuth();
   const [role, setRole] = useState<PortalRole>('central');
   const [verifyId, setVerifyId] = useState('');
   const ui = { workspace: t('workspace'), overview: t('overview'), anomalies: t('anomalies'), intelligence: t('intelligence'), notes: t('notes'), refresh: t('refresh'), import: t('import'), command: t('command') };
@@ -100,6 +104,17 @@ export default function MpladRadarDashboard() {
     if (requestedRole === 'citizen' || requestedRole === 'authority') setRole(requestedRole);
     setVerifyId(params.get('verify') || '');
   }, []);
+
+
+  useEffect(() => {
+    if (user.role === 'citizen') {
+      setRole('citizen');
+    } else if (user.role === 'mp') {
+      setRole('authority');
+    } else {
+      setRole('central');
+    }
+  }, [user.role]);
 
   const [activeTab, setActiveTab] = useState<'overview' | 'anomalies' | 'intelligence' | 'notes'>('overview');
   const [mobileNav, setMobileNav] = useState(false);
@@ -181,6 +196,7 @@ export default function MpladRadarDashboard() {
   }, [scopedProjects]);
 
   const freezeProject = (project: Project) => {
+    if (isRestrictedForCitizen('Freeze Disbursement & Officer Lock')) return;
     const time = new Date().toLocaleString('en-IN');
     setLockedProjects((s) => ({ ...s, [project.id]: time }));
     setAuditLogs((s) => [
@@ -200,57 +216,15 @@ export default function MpladRadarDashboard() {
 
   return (
     <div className="min-h-screen bg-[#0b132b] text-slate-100 selection:bg-indigo-500/30">
-      <header className="sticky top-0 z-40 border-b border-[#334155]/70 bg-[#0b132b]/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-3 px-4 sm:px-6 lg:px-8">
-          <button
-            onClick={() => setMobileNav((s) => !s)}
-            className="rounded-lg p-2 text-slate-300 hover:bg-white/10 lg:hidden"
-            aria-label="Toggle sidebar"
-          >
-            <Menu size={18} />
-          </button>
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-cyan-500 shadow-lg shadow-indigo-600/20">
-              <Radar size={18} className="text-white" />
-            </div>
-            <div>
-              <div className="text-sm font-bold">MPLAD Radar <span className="text-indigo-600">(SIH26102)</span></div>
-              <div className="hidden text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 sm:block">
-                MoSPI Vigilance Control Room
-              </div>
-            </div>
-          </div>
-
-          <div className="ml-auto flex items-center gap-2">
-            <select value={role} onChange={(event) => setRole(event.target.value as PortalRole)} aria-label="Select portal role" className="hidden max-w-[220px] rounded-lg border border-indigo-400/30 bg-[#1e293b] px-2 py-2 text-[10px] font-bold text-indigo-100 outline-none sm:block">
-              <option value="central">Central Auditor View</option>
-              <option value="citizen">Public Citizen Portal</option>
-              <option value="authority">MP &amp; District Authority Workspace</option>
-            </select>
-            <select value={language} onChange={(event) => setLang(event.target.value as PortalLanguage)} aria-label="Select language" className="rounded-lg border border-[#334155] bg-[#1e293b] px-2 py-2 text-[10px] font-black text-slate-200 outline-none">
-              <option value="en">EN</option><option value="hi">हिन्दी</option><option value="mr">मराठी</option>
-            </select>
-            <button onClick={toggle} aria-label="Toggle light and dark theme" className="rounded-lg border border-[#334155] bg-[#1e293b]/70 p-2 text-slate-200 hover:border-indigo-400">
-              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-            </button>
-            <button
-              onClick={reload}
-              className="inline-flex items-center gap-2 rounded-lg border border-[#334155] bg-[#1e293b]/70 px-3 py-2 text-xs font-bold text-slate-200 shadow-lg shadow-black/10 transition hover:border-indigo-400/70 hover:bg-indigo-500/10"
-            >
-              <RefreshCw size={14} /> {ui.refresh}
-            </button>
-            <button
-              onClick={() => setShowImport(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-700"
-            >
-              <Upload size={14} /> {ui.import}
-            </button>
-            <span className="hidden items-center gap-2 rounded-lg border border-indigo-400/30 bg-indigo-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-indigo-200 sm:inline-flex">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_10px_#10e981]" /> {ui.command}
-            </span>
-          </div>
-        </div>
-      </header>
+      <Header
+        projects={projects}
+        onSearchSelect={(item) => setSelected(item)}
+        onOpenAnalysis={() => {
+          if (isRestrictedForCitizen('Model Calibration & Live AI Engine')) return;
+          setActiveTab('overview');
+          setOverviewMode('matrix');
+        }}
+      />
 
       {role === 'citizen' ? (
         <CitizenPortal projects={projects} language={language} verifyId={verifyId} />
