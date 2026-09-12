@@ -2,6 +2,8 @@
 
 import { Header } from '@/components/Header';
 import { ExecutiveCommandHub } from '@/components/ExecutiveCommandHub';
+import { OperationalWorkflowHub } from '@/components/OperationalWorkflowHub';
+import { RiskPassportDrawer } from '@/components/RiskPassportDrawer';
 import { useAuth } from '@/lib/AuthContext';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -131,6 +133,7 @@ export default function MpladRadarDashboard() {
   const [page, setPage] = useState(1);
 
   const [selected, setSelected] = useState<Project | null>(null);
+  const [passportProject, setPassportProject] = useState<Project | null>(null);
   const [memoProject, setMemoProject] = useState<Project | null>(null);
   const [memoNarrative, setMemoNarrative] = useState('');
 
@@ -219,7 +222,7 @@ export default function MpladRadarDashboard() {
     <div className="min-h-screen bg-[#0b132b] text-slate-100 selection:bg-indigo-500/30">
       <Header
         projects={projects}
-        onSearchSelect={(item) => setSelected(item)}
+        onSearchSelect={(item) => setPassportProject(item)}
         onOpenAnalysis={() => {
           if (isRestrictedForCitizen('Model Calibration & Live AI Engine')) return;
           setActiveTab('overview');
@@ -300,12 +303,37 @@ export default function MpladRadarDashboard() {
               <section className="space-y-6">
                 <ExecutiveCommandHub
                   projects={scopedProjects}
-                  onInspectWork={setSelected}
+                  onInspectWork={(p) => setPassportProject(p)}
                   onExploreEngine={(engine) => {
                     setActiveTab('overview');
                     setOverviewMode('matrix');
                   }}
                   onOpenScrutinyQueue={() => setActiveTab('anomalies')}
+                />
+
+                <OperationalWorkflowHub
+                  flagshipProject={scopedProjects.find(p => (p.risk_score || 0) >= 80) || scopedProjects[0]}
+                  onInspectFlagship={() => {
+                    const target = scopedProjects.find(p => (p.risk_score || 0) >= 80) || scopedProjects[0];
+                    if (target) setPassportProject(target);
+                  }}
+                  onStepClick={(stepId) => {
+                    if (stepId === 1) setShowImport(true);
+                    else if (stepId === 2) {
+                      setActiveTab('overview');
+                      setOverviewMode('matrix');
+                    }
+                    else if (stepId === 3) setActiveTab('anomalies');
+                    else if (stepId === 4) {
+                      const target = scopedProjects.find(p => (p.risk_score || 0) >= 80) || scopedProjects[0];
+                      if (target) setPassportProject(target);
+                    }
+                    else if (stepId === 5) {
+                      const target = scopedProjects.find(p => (p.risk_score || 0) >= 80) || scopedProjects[0];
+                      if (target) setPassportProject(target);
+                    }
+                    else if (stepId === 6) setActiveTab('notes');
+                  }}
                 />
 
                 <MospiKpiGrid loading={loading} />
@@ -345,7 +373,7 @@ export default function MpladRadarDashboard() {
                   <button onClick={() => setOverviewMode('matrix')} className={`rounded-lg px-3 py-2 text-[11px] font-black ${overviewMode === 'matrix' ? 'bg-indigo-600 text-white' : 'border border-[#334155] bg-[#0f172a] text-slate-300'}`}>Signal Matrix</button>
                 </div>
                 {overviewMode === 'matrix' ? (
-                  <SignalMatrix projects={scopedProjects} onInspect={setSelected} />
+                  <SignalMatrix projects={scopedProjects} onInspect={(p) => setPassportProject(p)} />
                 ) : viewMode === 'map' ? (
                   <section className="overflow-hidden rounded-2xl border border-[#334155] bg-[#1e293b]/75 shadow-2xl shadow-black/20 backdrop-blur-xl">
                     <div className="flex items-center justify-between border-b border-[#334155]/70 px-4 py-3">
@@ -357,7 +385,7 @@ export default function MpladRadarDashboard() {
                         Back to table
                       </button>
                     </div>
-                    <GISMapView projects={scopedProjects} onInspect={setSelected} />
+                    <GISMapView projects={scopedProjects} onInspect={(p) => setPassportProject(p)} />
                   </section>
                 ) : (
                   <section className="rounded-2xl border border-[#334155] bg-[#1e293b]/75 shadow-2xl shadow-black/20 backdrop-blur-xl">
@@ -376,7 +404,7 @@ export default function MpladRadarDashboard() {
                       projects={pagedProjects}
                       loading={loading}
                       lockedProjects={lockedProjects}
-                      onInspect={setSelected}
+                      onInspect={(p) => setPassportProject(p)}
                       onFreeze={freezeProject}
                     />
                     <PaginationFooter
@@ -410,7 +438,7 @@ export default function MpladRadarDashboard() {
                 projects={highRiskRows}
                 lockedProjects={lockedProjects}
                 onFreeze={freezeProject}
-                onInspect={setSelected}
+                onInspect={(p) => setPassportProject(p)}
                 onGenerateMemo={(project) => exportMemo(project, buildMemoNarrativeFromProject(project))}
               />
             )}
@@ -433,6 +461,16 @@ export default function MpladRadarDashboard() {
           </div>
         </main>
       </div>
+      )}
+
+      {passportProject && (
+        <RiskPassportDrawer
+          project={passportProject}
+          projects={projects}
+          onClose={() => setPassportProject(null)}
+          onFreeze={() => freezeProject(passportProject)}
+          onExportMemo={(narrative) => exportMemo(passportProject, narrative)}
+        />
       )}
 
       <AnimatePresence>
