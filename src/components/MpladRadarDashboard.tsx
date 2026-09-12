@@ -1,6 +1,7 @@
 'use client';
 
 import { Header } from '@/components/Header';
+import { ExecutiveCommandHub } from '@/components/ExecutiveCommandHub';
 import { useAuth } from '@/lib/AuthContext';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -116,7 +117,7 @@ export default function MpladRadarDashboard() {
     }
   }, [user.role]);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'anomalies' | 'intelligence' | 'notes'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'anomalies' | 'intelligence' | 'notes'>('overview');
   const [mobileNav, setMobileNav] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -248,6 +249,13 @@ export default function MpladRadarDashboard() {
               collapsed={sidebarCollapsed}
             />
             <SideItem
+              active={activeTab === 'analytics'}
+              onClick={() => setActiveTab('analytics')}
+              icon={<BarChart3 size={16} />}
+              label="Executive Analytics"
+              collapsed={sidebarCollapsed}
+            />
+            <SideItem
               active={activeTab === 'anomalies'}
               onClick={() => setActiveTab('anomalies')}
               icon={<AlertTriangle size={16} />}
@@ -289,7 +297,17 @@ export default function MpladRadarDashboard() {
             )}
 
             {activeTab === 'overview' && (
-              <section className="space-y-5">
+              <section className="space-y-6">
+                <ExecutiveCommandHub
+                  projects={scopedProjects}
+                  onInspectWork={setSelected}
+                  onExploreEngine={(engine) => {
+                    setActiveTab('overview');
+                    setOverviewMode('matrix');
+                  }}
+                  onOpenScrutinyQueue={() => setActiveTab('anomalies')}
+                />
+
                 <MospiKpiGrid loading={loading} />
                 <div className="mb-0 rounded-xl border border-cyan-400/25 bg-gradient-to-r from-indigo-500/15 via-blue-500/10 to-emerald-500/10 px-4 py-3 text-sm font-black text-slate-100 shadow-[0_0_28px_rgba(34,211,238,0.08)]">
                   Active AI Vigilance Batch: 11,005 Ingested Works <span className="mx-1 text-slate-500">|</span> Total Disbursed: ₹383.74 Cr <span className="mx-1 text-slate-500">|</span> <span className="text-rose-300">5 High Risk Fraud Cases</span>
@@ -370,6 +388,20 @@ export default function MpladRadarDashboard() {
                     />
                   </section>
                 )}
+              </section>
+            )}
+
+            {activeTab === 'analytics' && (
+              <section className="space-y-6">
+                <ExecutiveCommandHub
+                  projects={scopedProjects}
+                  onInspectWork={setSelected}
+                  onExploreEngine={(engine) => {
+                    setActiveTab('overview');
+                    setOverviewMode('matrix');
+                  }}
+                  onOpenScrutinyQueue={() => setActiveTab('anomalies')}
+                />
               </section>
             )}
 
