@@ -363,7 +363,7 @@ export default function MpladRadarDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-main)] text-[var(--text-primary)] selection:bg-indigo-500/30 transition-colors">
+    <div className="app-shell min-h-screen bg-[var(--bg-main)] text-[var(--text-primary)] selection:bg-indigo-500/30 transition-colors">
       <Header
         projects={projects}
         onSearchSelect={(item) => setPassportProject(item)}
@@ -892,7 +892,7 @@ function MospiKpiGrid({ loading, projects }: { loading: boolean; projects: Proje
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
       {cards.map((card) => (
-        <article key={card.label} className="group rounded-2xl border border-[#334155] bg-[#1e293b]/75 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-indigo-400/50 hover:shadow-indigo-950/40" style={cards.indexOf(card) === 0 ? { backgroundColor: 'rgb(255, 253, 253)', color: 'rgb(247, 248, 251)' } : undefined}>
+        <article key={card.label} className="premium-metric group rounded-2xl border border-[#334155] bg-[#1e293b]/75 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-indigo-400/50 hover:shadow-indigo-950/40" style={cards.indexOf(card) === 0 ? { backgroundColor: 'rgb(255, 253, 253)', color: 'rgb(247, 248, 251)' } : undefined}>
           <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400" style={cards.indexOf(card) === 0 ? { color: 'rgb(3, 4, 7)' } : undefined}>{card.label}</div>
           {loading ? (
             <div className="space-y-2"><div className="shimmer h-6 w-24 rounded" /><div className="shimmer h-4 w-20 rounded" /></div>

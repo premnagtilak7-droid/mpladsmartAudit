@@ -86,7 +86,7 @@ export function ExecutiveCommandHub({
   return (
     <div className="space-y-6">
       {/* 1. NATIONAL EXECUTIVE COMMAND BANNER & KPI CARDS */}
-      <section className="rounded-2xl border border-slate-300 bg-slate-100 p-6 shadow-2xl backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/90">
+      <section className="premium-panel rounded-2xl border border-slate-300 bg-slate-100 p-6 shadow-2xl backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/90">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-5">
           <div>
             <div className="flex items-center gap-2">
@@ -228,7 +228,7 @@ export function ExecutiveCommandHub({
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {/* Engine 1 */}
-          <div className="flex flex-col justify-between rounded-xl border border-slate-700/80 bg-[#162033]/80 p-5 shadow-lg transition hover:border-blue-400/60 hover:bg-[#1a263d]">
+          <div className="premium-panel flex flex-col justify-between rounded-xl border border-slate-700/80 bg-[#162033]/80 p-5 shadow-lg transition hover:border-blue-400/60 hover:bg-[#1a263d]">
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30">
@@ -511,7 +511,7 @@ export function LiveRiskSimulator({ onOpenScrutinyQueue }: { onOpenScrutinyQueue
   const strokeDashoffset = circumference - (score / 100) * circumference;
 
   return (
-    <section className="rounded-2xl border border-slate-700/80 bg-[#0f172a] p-6 shadow-2xl backdrop-blur-xl">
+    <section className="premium-panel rounded-2xl border border-slate-700/80 bg-[#0f172a] p-6 shadow-2xl backdrop-blur-xl">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4" style={{ color: 'rgb(229, 229, 232)' }}>
         <div>
           <div className="flex items-center gap-2">
