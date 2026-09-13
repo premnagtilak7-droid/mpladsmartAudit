@@ -22,19 +22,23 @@ interface OperationalWorkflowHubProps {
   onStepClick: (stepId: number) => void;
   onInspectFlagship: () => void;
   flagshipProject?: Project | null;
+  totalRecords?: number;
+  highRiskRecords?: number;
 }
 
 export function OperationalWorkflowHub({
   onStepClick,
   onInspectFlagship,
   flagshipProject,
+  totalRecords = 3013,
+  highRiskRecords = 294,
 }: OperationalWorkflowHubProps) {
   const steps = [
     {
       id: 1,
       stepNumber: 'STEP 01',
       title: 'Data Ingestion & Quality Audit',
-      badge: '3,013 Records Loaded',
+      badge: `${totalRecords.toLocaleString('en-IN')} Records Loaded`,
       badgeColor: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
       description:
         'Zero-loss CSV/API schema mapping with automated completeness scorecard across coordinates & sanction records.',
@@ -61,7 +65,7 @@ export function OperationalWorkflowHub({
       id: 3,
       stepNumber: 'STEP 03',
       title: 'Prioritised Scrutiny Queue',
-      badge: '294 High-Risk Flags',
+      badge: `${highRiskRecords.toLocaleString('en-IN')} High-Risk Flags`,
       badgeColor: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
       description:
         'Explainable triage queue sorted by risk score. Multi-filter by district, category, execution lag, and overlapping proposals.',

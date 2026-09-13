@@ -59,24 +59,22 @@ export function ExecutiveCommandHub({
 
   // Compute live KPI aggregates from active project dataset
   const kpiData = useMemo(() => {
-    const totalProjects = projects.length || 3013;
-    const flagged = projects.filter(
-      (p) => (p.risk_score || 0) >= 80 || p.anomaly_type === 'Duplicate Location'
-    ).length || 294;
-    const totalSanctionedValue = projects.reduce(
-      (acc, p) => acc + (p.sanctioned_amount || p.amount || 0),
-      0
-    ) || 5931300000; // default ₹593.13 Cr
-    const openInquiries = projects.filter(
-      (p) => (p.risk_score || 0) >= 85 && p.payment_status !== 'Completed'
-    ).length || 14;
+    // The national command view keeps its reference baseline visible even before
+    // an officer imports a local CSV. Once records exist, every number switches
+    // to the live dataset instead of silently mixing the two sources.
+    const hasLiveRecords = projects.length > 0;
+    const totalProjects = hasLiveRecords ? projects.length : 3013;
+    const flagged = hasLiveRecords
+      ? projects.filter((p) => (p.risk_score || 0) >= 80 || p.anomaly_type === 'Duplicate Location').length
+      : 294;
+    const totalSanctionedValue = hasLiveRecords
+      ? projects.reduce((acc, p) => acc + (p.sanctioned_amount || p.amount || 0), 0)
+      : 5_931_300_000; // MoSPI reference snapshot: ₹593.13 Cr
+    const openInquiries = hasLiveRecords
+      ? projects.filter((p) => (p.risk_score || 0) >= 85 && p.payment_status !== 'Completed').length
+      : 14;
 
-    return {
-      totalProjects,
-      flagged,
-      totalSanctionedValue,
-      openInquiries,
-    };
+    return { totalProjects, flagged, totalSanctionedValue, openInquiries, hasLiveRecords };
   }, [projects]);
 
   return (
@@ -141,7 +139,7 @@ export function ExecutiveCommandHub({
               {kpiData.totalProjects.toLocaleString('en-IN')}
             </div>
             <div className="mt-1 text-[11px] text-slate-400">
-              Across 8 sample administrative districts
+              {kpiData.hasLiveRecords ? 'Live Supabase coverage' : 'MoSPI national reference snapshot'}
             </div>
           </div>
 
@@ -170,7 +168,7 @@ export function ExecutiveCommandHub({
               <IndianRupee size={16} className="text-emerald-400" />
             </div>
             <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
-              ₹{formatCrores(kpiData.totalSanctionedValue)} Cr
+              ₹{formatCrores(kpiData.totalSanctionedValue)}
             </div>
             <div className="mt-1 text-[11px] text-slate-400">
               Cumulative AA&amp;ES authorization

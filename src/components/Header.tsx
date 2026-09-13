@@ -185,7 +185,8 @@ export function Header({
             <button
               type="button"
               onClick={toggle}
-              aria-label="Toggle theme"
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
               className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700/70 bg-[#0f172a] text-slate-300 hover:text-white hover:border-slate-500 transition"
             >
               {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
