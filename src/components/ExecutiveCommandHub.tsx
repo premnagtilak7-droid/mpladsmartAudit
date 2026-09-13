@@ -62,30 +62,36 @@ export function ExecutiveCommandHub({
     // The national command view keeps its reference baseline visible even before
     // an officer imports a local CSV. Once records exist, every number switches
     // to the live dataset instead of silently mixing the two sources.
-    const hasLiveRecords = projects.length > 0;
-    const totalProjects = hasLiveRecords ? projects.length : 3013;
-    const flagged = hasLiveRecords
-      ? projects.filter((p) => (p.risk_score || 0) >= 80 || p.anomaly_type === 'Duplicate Location').length
-      : 294;
-    const totalSanctionedValue = hasLiveRecords
-      ? projects.reduce((acc, p) => acc + (p.sanctioned_amount || p.amount || 0), 0)
-      : 5_931_300_000; // MoSPI reference snapshot: ₹593.13 Cr
-    const openInquiries = hasLiveRecords
-      ? projects.filter((p) => (p.risk_score || 0) >= 85 && p.payment_status !== 'Completed').length
-      : 14;
+    const totalProjects = projects.length;
+    const flagged = projects.filter(
+      (p) => (p.risk_score || 0) >= 80 || p.anomaly_type === 'Duplicate Location',
+    ).length;
+    const totalSanctionedValue = projects.reduce(
+      (acc, p) => acc + (p.sanctioned_amount || p.amount || 0),
+      0,
+    );
+    const openInquiries = projects.filter(
+      (p) => (p.risk_score || 0) >= 85 && p.payment_status !== 'Completed',
+    ).length;
 
-    return { totalProjects, flagged, totalSanctionedValue, openInquiries, hasLiveRecords };
+    return {
+      totalProjects,
+      flagged,
+      totalSanctionedValue,
+      openInquiries,
+      sanctionedCrores: (totalSanctionedValue / 10_000_000).toFixed(2),
+    };
   }, [projects]);
 
   return (
     <div className="space-y-6">
       {/* 1. NATIONAL EXECUTIVE COMMAND BANNER & KPI CARDS */}
-      <section className="rounded-2xl border border-slate-700/80 bg-gradient-to-b from-[#111e38] to-[#0a1226] p-6 shadow-2xl backdrop-blur-xl">
+      <section className="rounded-2xl border border-slate-300 bg-slate-100 p-6 shadow-2xl backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/90">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-5">
           <div>
             <div className="flex items-center gap-2">
               <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <h2 className="text-xl font-black uppercase tracking-tight text-white sm:text-2xl">
+              <h2 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
                 National Executive Command
               </h2>
             </div>
@@ -135,11 +141,11 @@ export function ExecutiveCommandHub({
               </span>
               <Building2 size={16} className="text-blue-400" />
             </div>
-            <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
+              <div className="mt-3 text-2xl font-black text-slate-900 dark:text-slate-100 sm:text-3xl">
               {kpiData.totalProjects.toLocaleString('en-IN')}
             </div>
             <div className="mt-1 text-[11px] text-slate-400">
-              {kpiData.hasLiveRecords ? 'Live Supabase coverage' : 'MoSPI national reference snapshot'}
+              Live Supabase coverage
             </div>
           </div>
 
@@ -167,8 +173,8 @@ export function ExecutiveCommandHub({
               </span>
               <IndianRupee size={16} className="text-emerald-400" />
             </div>
-            <div className="mt-3 text-2xl font-black text-white sm:text-3xl">
-              ₹{formatCrores(kpiData.totalSanctionedValue)}
+              <div className="mt-3 text-2xl font-black text-slate-900 dark:text-slate-100 sm:text-3xl">
+              ₹{kpiData.sanctionedCrores} Cr
             </div>
             <div className="mt-1 text-[11px] text-slate-400">
               Cumulative AA&amp;ES authorization
@@ -200,7 +206,7 @@ export function ExecutiveCommandHub({
             <div className="text-[10px] font-black uppercase tracking-widest text-cyan-400">
               System Architecture
             </div>
-            <h3 className="text-lg font-black text-white sm:text-xl">
+            <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 sm:text-xl">
               6 Calibrated Anomaly &amp; Risk Engines
             </h3>
           </div>
@@ -591,15 +597,15 @@ export function LiveRiskSimulator({ onOpenScrutinyQueue }: { onOpenScrutinyQueue
               onClick={() => setDuplicateScope((prev) => !prev)}
               className={`flex flex-col justify-between rounded-xl border p-3.5 text-left transition ${
                 duplicateScope
-                  ? 'border-purple-500/60 bg-purple-500/10'
-                  : 'border-slate-800 bg-[#162033]/30 opacity-60 hover:opacity-100'
+                  ? 'border-purple-500/60 bg-purple-100 dark:bg-purple-500/10'
+                  : 'border-slate-300 bg-slate-100 dark:border-slate-800 dark:bg-slate-800/80 opacity-60 hover:opacity-100'
               }`}
             >
               <div className="flex items-center justify-between">
                 <Layers size={16} className={duplicateScope ? 'text-purple-400' : 'text-slate-500'} />
                 <span className={`h-2.5 w-2.5 rounded-full ${duplicateScope ? 'bg-purple-400 ring-2 ring-purple-900' : 'bg-slate-700'}`} />
               </div>
-              <div className="mt-2.5 font-bold text-xs text-white">Duplicate Match</div>
+              <div className="mt-2.5 font-bold text-xs text-slate-900 dark:text-slate-100">Duplicate Match</div>
               <div className="text-[10px] text-slate-400 mt-0.5">92% NLP (&lt;400m)</div>
             </button>
 
@@ -609,15 +615,15 @@ export function LiveRiskSimulator({ onOpenScrutinyQueue }: { onOpenScrutinyQueue
               onClick={() => setAgencyMonopoly((prev) => !prev)}
               className={`flex flex-col justify-between rounded-xl border p-3.5 text-left transition ${
                 agencyMonopoly
-                  ? 'border-blue-500/60 bg-blue-500/10'
-                  : 'border-slate-800 bg-[#162033]/30 opacity-60 hover:opacity-100'
+                  ? 'border-blue-500/60 bg-blue-100 dark:bg-blue-500/10'
+                  : 'border-slate-300 bg-slate-100 dark:border-slate-800 dark:bg-slate-800/80 opacity-60 hover:opacity-100'
               }`}
             >
               <div className="flex items-center justify-between">
                 <Building2 size={16} className={agencyMonopoly ? 'text-blue-400' : 'text-slate-500'} />
                 <span className={`h-2.5 w-2.5 rounded-full ${agencyMonopoly ? 'bg-blue-400 ring-2 ring-blue-900' : 'bg-slate-700'}`} />
               </div>
-              <div className="mt-2.5 font-bold text-xs text-white">Agency Monopoly</div>
+              <div className="mt-2.5 font-bold text-xs text-slate-900 dark:text-slate-100">Agency Monopoly</div>
               <div className="text-[10px] text-slate-400 mt-0.5">HHI &gt; 2800 (Dominant)</div>
             </button>
 
@@ -627,15 +633,15 @@ export function LiveRiskSimulator({ onOpenScrutinyQueue }: { onOpenScrutinyQueue
               onClick={() => setMissingProof((prev) => !prev)}
               className={`flex flex-col justify-between rounded-xl border p-3.5 text-left transition ${
                 missingProof
-                  ? 'border-rose-500/60 bg-rose-500/10'
-                  : 'border-slate-800 bg-[#162033]/30 opacity-60 hover:opacity-100'
+                  ? 'border-rose-500/60 bg-rose-100 dark:bg-rose-500/10'
+                  : 'border-slate-300 bg-slate-100 dark:border-slate-800 dark:bg-slate-800/80 opacity-60 hover:opacity-100'
               }`}
             >
               <div className="flex items-center justify-between">
                 <Camera size={16} className={missingProof ? 'text-rose-400' : 'text-slate-500'} />
                 <span className={`h-2.5 w-2.5 rounded-full ${missingProof ? 'bg-rose-400 ring-2 ring-rose-900' : 'bg-slate-700'}`} />
               </div>
-              <div className="mt-2.5 font-bold text-xs text-white">Missing Proof</div>
+              <div className="mt-2.5 font-bold text-xs text-slate-900 dark:text-slate-100">Missing Proof</div>
               <div className="text-[10px] text-slate-400 mt-0.5">Verified GPS Hash</div>
             </button>
           </div>
@@ -672,7 +678,7 @@ export function LiveRiskSimulator({ onOpenScrutinyQueue }: { onOpenScrutinyQueue
               </svg>
               {/* Inner Label */}
               <div className="absolute flex flex-col items-center justify-center text-center">
-                <span className="text-3xl font-black text-white">{score}</span>
+                <span className="text-3xl font-black text-slate-900 dark:text-slate-100">{score}</span>
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Out of 100</span>
               </div>
             </div>

@@ -222,7 +222,7 @@ export function DataIngestionTab({
               placeholder="Enter ADMIN_API_TOKEN to unlock privileged actions"
               autoComplete="off"
               spellCheck={false}
-              className="w-full rounded-lg border border-slate-600/80 bg-[#0b132b] px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-cyan-400/70 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none dark:border-slate-600/80 dark:bg-[#0b132b] dark:text-slate-100 dark:placeholder:text-slate-400"
             />
           </div>
           <span
@@ -236,7 +236,7 @@ export function DataIngestionTab({
             {tokenReady ? 'Credential staged' : 'Credential required'}
           </span>
         </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+        <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-800 dark:text-slate-200">
           Held in session storage for this tab only — never written into the bundle. Purge and ingest
           endpoints fail closed on the server when no admin token is configured.
         </p>
@@ -248,17 +248,17 @@ export function DataIngestionTab({
         {/* ================================================================ */}
         <section
           id="panel-database-control"
-          className="flex flex-col rounded-2xl border border-rose-500/30 bg-gradient-to-b from-rose-950/25 to-[#0f172a]/85 p-5 shadow-2xl shadow-rose-950/25 backdrop-blur-xl"
+          className="flex flex-col rounded-2xl border border-rose-300 bg-slate-100 p-5 shadow-2xl shadow-rose-950/10 backdrop-blur-xl dark:border-rose-500/30 dark:bg-slate-900/90 dark:shadow-rose-950/25"
         >
           <header className="mb-4 flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-rose-400/40 bg-rose-500/15 text-rose-200">
               <Eraser size={18} />
             </div>
             <div>
-              <h2 className="text-sm font-black uppercase tracking-[0.12em] text-rose-100">
+              <h2 className="text-sm font-black uppercase tracking-[0.12em] text-red-700 dark:text-rose-100">
                 Database Control &amp; Hard Reset
               </h2>
-              <p className="mt-1 text-[11px] leading-relaxed text-rose-200/70">
+              <p className="mt-1 text-[11px] font-semibold leading-relaxed text-red-700 dark:text-red-400">
                 Empties <code className="text-rose-100">projects</code>,{' '}
                 <code className="text-rose-100">anomaly_signals</code>,{' '}
                 <code className="text-rose-100">officer_audit_logs</code> and{' '}
@@ -365,14 +365,14 @@ export function DataIngestionTab({
         {/* ================================================================ */}
         <section
           id="panel-mospi-importer"
-          className="flex flex-col rounded-2xl border border-cyan-500/30 bg-gradient-to-b from-cyan-950/25 to-[#0f172a]/85 p-5 shadow-2xl shadow-cyan-950/25 backdrop-blur-xl"
+          className="flex flex-col rounded-2xl border border-cyan-300 bg-slate-100 p-5 shadow-2xl shadow-cyan-950/10 backdrop-blur-xl dark:border-cyan-500/30 dark:bg-slate-900/90 dark:shadow-cyan-950/25"
         >
           <header className="mb-4 flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-400/40 bg-cyan-500/15 text-cyan-200">
               <FileSpreadsheet size={18} />
             </div>
             <div>
-              <h2 className="text-sm font-black uppercase tracking-[0.12em] text-cyan-100">
+              <h2 className="text-sm font-black uppercase tracking-[0.12em] text-cyan-800 dark:text-cyan-100">
                 MoSPI Official Dataset Importer
               </h2>
               <p className="mt-1 text-[11px] leading-relaxed text-cyan-200/70">
@@ -386,7 +386,7 @@ export function DataIngestionTab({
 
           {/* Expected schema chips */}
           <div className="mb-4">
-            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
+            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-800 dark:text-slate-200">
               Expected MoSPI Columns
             </div>
             <div className="flex flex-wrap gap-1">
@@ -449,7 +449,7 @@ export function DataIngestionTab({
                   size={26}
                   className={`mb-2 ${dragging ? 'text-cyan-300' : 'text-slate-500'}`}
                 />
-                <div className="text-xs font-bold text-slate-200">
+                <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
                   Drag &amp; drop the MoSPI CSV here
                 </div>
                 <div className="mt-1 text-[11px] text-slate-500">
@@ -570,7 +570,7 @@ export function DataIngestionTab({
 
           {Object.keys(summary.summary.flag_distribution).length > 0 && (
             <div className="mb-4">
-              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-800 dark:text-slate-200">
                 Primary Flag Distribution
               </div>
               <div className="flex flex-wrap gap-1.5">

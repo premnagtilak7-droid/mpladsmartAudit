@@ -543,3 +543,21 @@ body {
 :root:not(.dark) input,
 :root:not(.dark) select,
 :root:not(.dark) textarea { color-scheme: light; }
+
+/* Final light-mode readability guard for dark-first dashboard modules. */
+:root[data-theme='light'] .text-slate-100,
+:root[data-theme='light'] .text-slate-200 { color: #0f172a; }
+:root[data-theme='light'] .text-slate-300 { color: #334155; }
+:root[data-theme='light'] .text-slate-400 { color: #475569; }
+:root[data-theme='light'] .text-white { color: #0f172a; }
+:root[data-theme='light'] .bg-\[\#0f172a\],
+:root[data-theme='light'] .bg-\[\#0b132b\],
+:root[data-theme='light'] .bg-\[\#162033\] { background-color: #ffffff; }
+:root[data-theme='light'] .border-slate-700,
+:root[data-theme='light'] .border-slate-800,
+:root[data-theme='light'] .border-\[\#334155\] { border-color: #cbd5e1; }
+:root[data-theme='light'] .dark-mode-gauge-number { color: #0f172a; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

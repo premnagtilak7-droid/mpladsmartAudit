@@ -541,8 +541,8 @@ export default function MpladRadarDashboard() {
                 />
 
                 <OperationalWorkflowHub
-                  totalRecords={projects.length || 3013}
-                  highRiskRecords={highRiskRows.length || 294}
+                  totalRecords={projects.length}
+                  highRiskRecords={highRiskRows.length}
                   flagshipProject={scopedProjects.find(p => (p.risk_score || 0) >= 80) || scopedProjects[0]}
                   onInspectFlagship={() => {
                     const target = scopedProjects.find(p => (p.risk_score || 0) >= 80) || scopedProjects[0];
@@ -872,13 +872,12 @@ function RiskTooltip({ active, payload }: { active?: boolean; payload?: Array<{ 
 
 function MospiKpiGrid({ loading, projects }: { loading: boolean; projects: Project[] }) {
   const cards = useMemo(() => {
-    const hasLiveRecords = projects.length > 0;
-    const totalAllocated = hasLiveRecords ? projects.reduce((sum, p) => sum + (Number(p.allocated_amount) || 0), 0) : 279_783_000_000;
-    const totalSanctioned = hasLiveRecords ? projects.reduce((sum, p) => sum + (Number(p.sanctioned_amount) || 0), 0) : 5_931_300_000;
-    const totalExpenditure = hasLiveRecords ? projects.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) : 5_931_300_000;
-    const sanctionedWorks = hasLiveRecords ? projects.filter((p) => (Number(p.sanctioned_amount) || 0) > 0).length : 2_719;
-    const completedWorks = hasLiveRecords ? projects.filter((p) => (Number(p.completion_percent) || 0) >= 100).length : 1_842;
-    const recommendedWorks = hasLiveRecords ? projects.length : 3_013;
+    const totalAllocated = projects.reduce((sum, p) => sum + (Number(p.allocated_amount) || 0), 0);
+    const totalSanctioned = projects.reduce((sum, p) => sum + (Number(p.sanctioned_amount) || 0), 0);
+    const totalExpenditure = projects.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const sanctionedWorks = projects.filter((p) => (Number(p.sanctioned_amount) || 0) > 0).length;
+    const completedWorks = projects.filter((p) => (Number(p.completion_percent) || 0) >= 100).length;
+    const recommendedWorks = projects.length;
 
     return [
       { label: "Allocated Limit for Hon'ble MPs", count: null, value: totalAllocated, countLabel: '' },
@@ -899,8 +898,8 @@ function MospiKpiGrid({ loading, projects }: { loading: boolean; projects: Proje
             <div className="space-y-2"><div className="shimmer h-6 w-24 rounded" /><div className="shimmer h-4 w-20 rounded" /></div>
           ) : (
             <>
-              <div className="text-lg font-black text-white">{card.count == null ? `₹${formatCrores(card.value)}` : `${card.count.toLocaleString('en-IN')} ${card.countLabel}`}</div>
-              {card.count != null && card.value > 0 && <div className="text-xs font-semibold text-slate-300">₹{formatCrores(card.value)}</div>}
+              <div className="text-lg font-black text-slate-900 dark:text-slate-100">{card.count == null ? `₹${formatCrores(card.value)}` : `${card.count.toLocaleString('en-IN')} ${card.countLabel}`}</div>
+              {card.count != null && <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">₹{formatCrores(card.value)}</div>}
             </>
           )}
         </article>
@@ -1229,7 +1228,7 @@ function FundIntelligence({
 }
 
 function PerformanceSummaryCard({ label, description, count, className }: { label: string; description: string; count: number; className: string }) {
-  return <article className={`rounded-2xl border p-4 shadow-2xl shadow-black/20 ${className}`}><div className="text-[10px] font-black uppercase tracking-[0.14em]">{label}</div><div className="mt-2 text-3xl font-black text-white">{count}</div><div className="mt-1 text-[11px] text-slate-300">{description}</div></article>;
+  return <article className={`rounded-2xl border p-4 shadow-2xl shadow-black/20 ${className}`}><div className="text-[10px] font-black uppercase tracking-[0.14em]">{label}</div><div className="mt-2 text-3xl font-black text-slate-900 dark:text-slate-100">{count}</div><div className="mt-1 text-[11px] text-slate-300">{description}</div></article>;
 }
 
 function OfficialNotes({
@@ -1375,7 +1374,7 @@ function AuditDrawer({
 
         <section className={`rounded-2xl border ${tone.border} ${tone.bg} p-5`}>
           <div className="flex flex-col items-center gap-5 sm:flex-row">
-            <div className="relative h-36 w-36 shrink-0"><svg viewBox="0 0 112 112" className="h-full w-full -rotate-90"><circle cx="56" cy="56" r="45" fill="none" stroke="#334155" strokeWidth="10" /><circle cx="56" cy="56" r="45" fill="none" stroke={tone.color} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${(score / 100) * circumference} ${circumference}`} className="transition-all duration-700" /></svg><div className="absolute inset-0 grid place-items-center text-center"><div><div className="text-3xl font-black text-white">{score}</div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">/ 100</div></div></div></div>
+            <div className="relative h-36 w-36 shrink-0"><svg viewBox="0 0 112 112" className="h-full w-full -rotate-90"><circle cx="56" cy="56" r="45" fill="none" stroke="#334155" strokeWidth="10" /><circle cx="56" cy="56" r="45" fill="none" stroke={tone.color} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${(score / 100) * circumference} ${circumference}`} className="transition-all duration-700" /></svg><div className="absolute inset-0 grid place-items-center text-center"><div><div className="text-3xl font-black text-slate-900 dark:text-slate-100">{score}</div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">/ 100</div></div></div></div>
             <div className="min-w-0 flex-1"><div className={`text-xs font-black uppercase tracking-[0.16em] ${tone.text}`}>{tone.label}</div><h4 className="mt-1 text-lg font-black text-white">Visual risk assessment</h4><p className="mt-2 text-xs leading-5 text-slate-300">The score combines the current anomaly enrichment, payment status, location signal, and vendor pattern for this project.</p>{score >= 80 && <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-rose-400/40 bg-rose-500/15 px-3 py-1.5 text-[10px] font-black text-rose-200"><Activity size={12} /> Prioritize Field Verification</div>}</div>
           </div>
         </section>

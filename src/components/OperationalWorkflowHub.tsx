@@ -22,16 +22,16 @@ interface OperationalWorkflowHubProps {
   onStepClick: (stepId: number) => void;
   onInspectFlagship: () => void;
   flagshipProject?: Project | null;
-  totalRecords?: number;
-  highRiskRecords?: number;
+  totalRecords: number;
+  highRiskRecords: number;
 }
 
 export function OperationalWorkflowHub({
   onStepClick,
   onInspectFlagship,
   flagshipProject,
-  totalRecords = 3013,
-  highRiskRecords = 294,
+  totalRecords,
+  highRiskRecords,
 }: OperationalWorkflowHubProps) {
   const steps = [
     {
