@@ -892,13 +892,16 @@ function MospiKpiGrid({ loading, projects }: { loading: boolean; projects: Proje
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
       {cards.map((card) => (
-        <article key={card.label} className="group rounded-2xl border border-[#334155] bg-[#1e293b]/75 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-indigo-400/50 hover:shadow-indigo-950/40">
-          <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{card.label}</div>
+        <article key={card.label} className="group rounded-2xl border border-[#334155] bg-[#1e293b]/75 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-indigo-400/50 hover:shadow-indigo-950/40" style={cards.indexOf(card) === 0 ? { backgroundColor: 'rgb(255, 253, 253)', color: 'rgb(247, 248, 251)' } : undefined}>
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400" style={cards.indexOf(card) === 0 ? { color: 'rgb(3, 4, 7)' } : undefined}>{card.label}</div>
           {loading ? (
             <div className="space-y-2"><div className="shimmer h-6 w-24 rounded" /><div className="shimmer h-4 w-20 rounded" /></div>
           ) : (
             <>
-              <div className="text-lg font-black text-slate-900 dark:text-slate-100">{card.count == null ? `₹${formatCrores(card.value)}` : `${card.count.toLocaleString('en-IN')} ${card.countLabel}`}</div>
+              <div
+                className="text-lg font-black text-slate-900 dark:text-slate-100"
+                style={{ color: ['rgb(34, 57, 225)', 'rgb(7, 3, 4)', 'rgb(215, 181, 42)', 'rgb(215, 94, 42)', 'rgb(42, 215, 201)', 'rgb(129, 215, 42)'][cards.indexOf(card)] }}
+              >{card.count == null ? `₹${formatCrores(card.value)}` : `${card.count.toLocaleString('en-IN')} ${card.countLabel}`}</div>
               {card.count != null && <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">₹{formatCrores(card.value)}</div>}
             </>
           )}

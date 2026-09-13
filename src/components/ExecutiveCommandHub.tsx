@@ -141,7 +141,10 @@ export function ExecutiveCommandHub({
               </span>
               <Building2 size={16} className="text-blue-400" />
             </div>
-              <div className="mt-3 text-2xl font-black text-slate-900 dark:text-slate-100 sm:text-3xl">
+              <div
+                className="mt-3 text-2xl font-black text-slate-900 dark:text-slate-100 sm:text-3xl"
+                style={{ backgroundColor: 'rgb(244, 239, 239)', color: 'rgb(1, 1, 1)' }}
+              >
               {kpiData.totalProjects.toLocaleString('en-IN')}
             </div>
             <div className="mt-1 text-[11px] text-slate-400">
@@ -173,7 +176,10 @@ export function ExecutiveCommandHub({
               </span>
               <IndianRupee size={16} className="text-emerald-400" />
             </div>
-              <div className="mt-3 text-2xl font-black text-slate-900 dark:text-slate-100 sm:text-3xl">
+              <div
+                className="mt-3 text-2xl font-black text-slate-900 dark:text-slate-100 sm:text-3xl"
+                style={{ backgroundColor: 'rgb(245, 242, 242)', color: 'rgb(83, 102, 248)' }}
+              >
               ₹{kpiData.sanctionedCrores} Cr
             </div>
             <div className="mt-1 text-[11px] text-slate-400">
@@ -232,7 +238,7 @@ export function ExecutiveCommandHub({
                   +53.8% Avg Outlier
                 </span>
               </div>
-              <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400" style={{ color: 'rgb(7, 7, 7)' }}>
                 IQR Statistical Engine
               </div>
               <h4 className="text-sm font-black text-white">Cost Outlier Detection</h4>
@@ -260,7 +266,7 @@ export function ExecutiveCommandHub({
                   180+ Days Threshold
                 </span>
               </div>
-              <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400" style={{ color: 'rgb(7, 7, 7)' }}>
                 Milestone Engine
               </div>
               <h4 className="text-sm font-black text-white">Timeline &amp; Delay Tracking</h4>
@@ -288,7 +294,7 @@ export function ExecutiveCommandHub({
                   &lt;500m Proximity Lock
                 </span>
               </div>
-              <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400" style={{ color: 'rgb(7, 7, 7)' }}>
                 Geospatial Clustering
               </div>
               <h4 className="text-sm font-black text-white">Duplicate Proposal Matcher</h4>
@@ -316,7 +322,7 @@ export function ExecutiveCommandHub({
                   SHA-256 Verified
                 </span>
               </div>
-              <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400" style={{ color: 'rgb(7, 7, 7)' }}>
                 Tamper-Proof Lock
               </div>
               <h4 className="text-sm font-black text-white">Geo-Camera Evidence Lock</h4>
@@ -344,7 +350,7 @@ export function ExecutiveCommandHub({
                   HHI &gt; 2500 Monitored
                 </span>
               </div>
-              <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400" style={{ color: 'rgba(7, 7, 7, 0.98)' }}>
                 HHI Market Power
               </div>
               <h4 className="text-sm font-black text-white">Agency Monopoly Index</h4>
@@ -372,7 +378,7 @@ export function ExecutiveCommandHub({
                   100% Audit Trail
                 </span>
               </div>
-              <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400" style={{ color: 'rgb(7, 7, 7)' }}>
                 Append-Only Ledger
               </div>
               <h4 className="text-sm font-black text-white">Statutory Audit Ledger</h4>
@@ -506,7 +512,7 @@ export function LiveRiskSimulator({ onOpenScrutinyQueue }: { onOpenScrutinyQueue
 
   return (
     <section className="rounded-2xl border border-slate-700/80 bg-[#0f172a] p-6 shadow-2xl backdrop-blur-xl">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4" style={{ color: 'rgb(229, 229, 232)' }}>
         <div>
           <div className="flex items-center gap-2">
             <span className="rounded bg-indigo-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-indigo-300 border border-indigo-400/30">
@@ -678,7 +684,7 @@ export function LiveRiskSimulator({ onOpenScrutinyQueue }: { onOpenScrutinyQueue
               </svg>
               {/* Inner Label */}
               <div className="absolute flex flex-col items-center justify-center text-center">
-                <span className="text-3xl font-black text-slate-900 dark:text-slate-100">{score}</span>
+                <span className="text-3xl font-black text-slate-900 dark:text-slate-100" style={{ color: 'rgb(7, 6, 3)' }}>{score}</span>
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Out of 100</span>
               </div>
             </div>
