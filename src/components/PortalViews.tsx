@@ -475,7 +475,7 @@ export function CitizenPortal({
               <FileText size={17} className="text-indigo-400" /> {t.openData}
             </div>
             <p className="mb-3 text-xs text-slate-400">
-              Download the active {projects.length ? projects.length.toLocaleString('en-IN') : '11,005'} constituency project records for open data auditing, research, or RTI filing.
+              Download the active {projects.length.toLocaleString('en-IN')} constituency project records for open data auditing, research, or RTI filing.
             </p>
             <div className="flex flex-wrap gap-2.5">
               <Button
@@ -1134,6 +1134,19 @@ function ReportModal({
   onClose: () => void;
 }) {
   const funds = projects.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  // Statutory SC/ST share is derived from the live rows (constituency / work
+  // markers). It is never a hardcoded national figure.
+  const targetArea = projects.reduce(
+    (acc, p) => {
+      const haystack = `${p.constituency ?? ''} ${p.work ?? ''}`.toUpperCase();
+      if (haystack.includes('(SC)')) acc.sc += 1;
+      if (haystack.includes('(ST)')) acc.st += 1;
+      return acc;
+    },
+    { sc: 0, st: 0 },
+  );
+  const scPct = projects.length ? (targetArea.sc / projects.length) * 100 : 0;
+  const stPct = projects.length ? (targetArea.st / projects.length) * 100 : 0;
   return (
     <div
       className="fixed inset-0 z-[80] overflow-y-auto bg-slate-950/80 p-4"
@@ -1167,13 +1180,15 @@ function ReportModal({
 
         <div className="mt-5 rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4">
           <div className="text-xs font-black text-emerald-300">SC/ST statutory compliance</div>
-          <div className="mt-1 text-2xl font-black text-white">14.6% SC • 9.0% ST</div>
+          <div className="mt-1 text-2xl font-black text-white">
+            {projects.length ? `${scPct.toFixed(1)}% SC • ${stPct.toFixed(1)}% ST` : 'No SC/ST data ingested'}
+          </div>
         </div>
 
         <h3 className="mt-6 text-sm font-black text-white">Top 5 key achievements</h3>
         <ol className="mt-2 list-decimal space-y-2 pl-5 text-xs text-slate-300">
           <li>Transparent project-level disbursement visibility.</li>
-          <li>AI anomaly screening across the active 11,005-work batch.</li>
+          <li>AI anomaly screening across the active {projects.length.toLocaleString('en-IN')}-work batch.</li>
           <li>Public QR verification for completed assets.</li>
           <li>Citizen feedback loop linked to work IDs.</li>
           <li>Pre-submission Section 3 fraud prevention workflow.</li>

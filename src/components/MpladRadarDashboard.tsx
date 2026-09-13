@@ -120,7 +120,7 @@ type ModuleId =
   | 'notes';
 
 export default function MpladRadarDashboard() {
-  const { projects, loading, error, live, recordCount, reload } = useProjects();
+  const { projects, analytics, loading, error, live, recordCount, reload } = useProjects();
   const { theme, toggle } = useTheme();
   const { lang: language, setLang, t } = useLang();
   const { user, isRestrictedForCitizen, setSwitchModalOpen, canAccessAdminOnly } = useAuth();
@@ -565,9 +565,9 @@ export default function MpladRadarDashboard() {
                   }}
                 />
 
-                <MospiKpiGrid loading={loading} />
+                <MospiKpiGrid loading={loading} projects={projects} />
                 <div className="mb-0 rounded-xl border border-cyan-400/25 bg-gradient-to-r from-indigo-500/15 via-blue-500/10 to-emerald-500/10 px-4 py-3 text-sm font-black text-slate-100 shadow-[0_0_28px_rgba(34,211,238,0.08)]">
-                  Active AI Vigilance Batch: 11,005 Ingested Works <span className="mx-1 text-slate-500">|</span> Total Disbursed: ₹383.74 Cr <span className="mx-1 text-slate-500">|</span> <span className="text-rose-300">5 High Risk Fraud Cases</span>
+                  Active AI Vigilance Batch: {recordCount.toLocaleString('en-IN')} Ingested Works <span className="mx-1 text-slate-500">|</span> Total Disbursed: ₹{formatCrores(analytics.totalFunds)} <span className="mx-1 text-slate-500">|</span> <span className="text-rose-300">{analytics.flaggedHighRisk.toLocaleString('en-IN')} High Risk Fraud Cases</span>
                 </div>
                 <div className="grid gap-5 lg:grid-cols-2">
                   <ComplianceWidget projects={scopedProjects} />
@@ -868,15 +868,25 @@ function RiskTooltip({ active, payload }: { active?: boolean; payload?: Array<{ 
   return <div className="rounded-lg border border-[#334155] bg-[#0f172a] px-3 py-2 text-[11px] text-slate-100 shadow-xl"><div className="font-bold" style={{ color: item.fill }}>{item.name}</div><div>{item.value.toLocaleString('en-IN')} records</div><div className="text-slate-400">{item.percent.toFixed(2)}% of total</div></div>;
 }
 
-function MospiKpiGrid({ loading }: { loading: boolean }) {
-  const cards = [
-    { label: "Allocated Limit for Hon'ble MPs", count: null, value: 83336700000, countLabel: '' },
-    { label: 'Amount consented for Calamity', count: null, value: 40600000, countLabel: '' },
-    { label: 'Works Recommended', count: 107596, value: 57699400000, countLabel: 'works' },
-    { label: 'Works Sanctioned', count: 79932, value: 42107300000, countLabel: 'works' },
-    { label: 'Works Completed', count: 35000, value: 17141100000, countLabel: 'works' },
-    { label: 'Scheme Expenditure', count: null, value: 27978300000, countLabel: '' },
-  ] as const;
+function MospiKpiGrid({ loading, projects }: { loading: boolean; projects: Project[] }) {
+  // Every figure is derived from the live dataset. With no ingested rows every
+  // card reads zero rather than a stale national aggregate.
+  const cards = useMemo(() => {
+    const totalAllocated = projects.reduce((sum, p) => sum + (Number(p.allocated_amount) || 0), 0);
+    const totalSanctioned = projects.reduce((sum, p) => sum + (Number(p.sanctioned_amount) || 0), 0);
+    const totalExpenditure = projects.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const sanctionedWorks = projects.filter((p) => (Number(p.sanctioned_amount) || 0) > 0).length;
+    const completedWorks = projects.filter((p) => (Number(p.completion_percent) || 0) >= 100).length;
+
+    return [
+      { label: "Allocated Limit for Hon'ble MPs", count: null, value: totalAllocated, countLabel: '' },
+      { label: 'Amount Sanctioned', count: null, value: totalSanctioned, countLabel: '' },
+      { label: 'Works Recommended', count: projects.length, value: totalAllocated, countLabel: 'works' },
+      { label: 'Works Sanctioned', count: sanctionedWorks, value: totalSanctioned, countLabel: 'works' },
+      { label: 'Works Completed', count: completedWorks, value: 0, countLabel: 'works' },
+      { label: 'Scheme Expenditure', count: null, value: totalExpenditure, countLabel: '' },
+    ];
+  }, [projects]);
 
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
@@ -888,7 +898,7 @@ function MospiKpiGrid({ loading }: { loading: boolean }) {
           ) : (
             <>
               <div className="text-lg font-black text-white">{card.count == null ? `₹${formatCrores(card.value)}` : `${card.count.toLocaleString('en-IN')} ${card.countLabel}`}</div>
-              {card.count != null && <div className="text-xs font-semibold text-slate-300">₹{formatCrores(card.value)}</div>}
+              {card.count != null && card.value > 0 && <div className="text-xs font-semibold text-slate-300">₹{formatCrores(card.value)}</div>}
             </>
           )}
         </article>

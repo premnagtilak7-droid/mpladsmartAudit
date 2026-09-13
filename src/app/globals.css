@@ -277,3 +277,264 @@ body {
     color: #0f172a !important;
   }
 }
+
+
+/* ==========================================================================
+   LIGHT-MODE OVERRIDE LAYER
+   --------------------------------------------------------------------------
+   This application was authored dark-first. Surfaces, borders and text use
+   hardcoded dark literals (bg-[#0f172a], text-slate-400, border-slate-800)
+   which Tailwind compiles into STATIC utilities carrying no `dark:` prefix.
+   Those utilities never responded to the theme toggle, which is why switching
+   to Light mode left the UI looking dark.
+
+   Rather than rewrite ~1,180 literals across 12 components, the same tokens
+   are remapped here while the root element is NOT `.dark`.
+
+   Two deliberate constraints:
+     1. Selectors use the [class~="..."] attribute form, so Tailwind's escaped
+        class names (bg-[#0f172a], hover:bg-slate-800) need no special
+        handling.
+     2. Tokens that are already LIGHT values and already paired with their own
+        `dark:` counterpart (bg-slate-50, bg-slate-100, border-slate-200,
+        border-slate-100, text-slate-700, text-slate-800) are intentionally
+        NOT remapped - overriding them would break components that already
+        switch correctly.
+     3. Tokens carrying a `dark:` prefix are never touched; Tailwind owns those.
+
+   Specificity: these selectors are (0,3,0) vs Tailwind's (0,1,0), so they win
+   the cascade without !important. Every rule is scoped to :root:not(.dark),
+   so Dark mode output is byte-for-byte unchanged.
+   ========================================================================== */
+
+/* --- surfaces (arbitrary hex) ------------------------------------------ */
+:root:not(.dark) [class~="bg-[#070d1e]"] { background-color: #f1f5f9; }
+:root:not(.dark) [class~="bg-[#070d1e]/70"] { background-color: rgba(241,245,249,.7); }
+:root:not(.dark) [class~="bg-[#070d1e]/80"] { background-color: rgba(241,245,249,.8); }
+:root:not(.dark) [class~="bg-[#070d1e]/95"] { background-color: rgba(241,245,249,.95); }
+:root:not(.dark) [class~="bg-[#0b1224]"] { background-color: #ffffff; }
+:root:not(.dark) [class~="bg-[#0b1224]/95"] { background-color: rgba(255,255,255,.95); }
+:root:not(.dark) [class~="bg-[#0b132b]"] { background-color: #f8fafc; }
+:root:not(.dark) [class~="bg-[#0b132b]/60"] { background-color: rgba(248,250,252,.6); }
+:root:not(.dark) [class~="bg-[#0b132b]/90"] { background-color: rgba(248,250,252,.9); }
+:root:not(.dark) [class~="bg-[#0d1b35]"] { background-color: #ffffff; }
+:root:not(.dark) [class~="bg-[#0f172a]"] { background-color: #ffffff; }
+:root:not(.dark) [class~="bg-[#0f172a]/35"] { background-color: rgba(255,255,255,.35); }
+:root:not(.dark) [class~="bg-[#0f172a]/60"] { background-color: rgba(255,255,255,.6); }
+:root:not(.dark) [class~="bg-[#0f172a]/65"] { background-color: rgba(255,255,255,.65); }
+:root:not(.dark) [class~="bg-[#0f172a]/70"] { background-color: rgba(255,255,255,.7); }
+:root:not(.dark) [class~="bg-[#0f172a]/80"] { background-color: rgba(255,255,255,.8); }
+:root:not(.dark) [class~="bg-[#0f172a]/90"] { background-color: rgba(255,255,255,.9); }
+:root:not(.dark) [class~="bg-[#0f172a]/95"] { background-color: rgba(255,255,255,.95); }
+:root:not(.dark) [class~="bg-[#162033]"] { background-color: #f8fafc; }
+:root:not(.dark) [class~="bg-[#162033]/30"] { background-color: rgba(248,250,252,.6); }
+:root:not(.dark) [class~="bg-[#162033]/40"] { background-color: rgba(248,250,252,.7); }
+:root:not(.dark) [class~="bg-[#162033]/50"] { background-color: rgba(248,250,252,.8); }
+:root:not(.dark) [class~="bg-[#162033]/60"] { background-color: rgba(248,250,252,.85); }
+:root:not(.dark) [class~="bg-[#162033]/80"] { background-color: rgba(248,250,252,.95); }
+:root:not(.dark) [class~="bg-[#1a263d]"] { background-color: #f1f5f9; }
+:root:not(.dark) [class~="bg-[#1e293b]"] { background-color: #ffffff; }
+:root:not(.dark) [class~="bg-[#1e293b]/50"] { background-color: rgba(255,255,255,.6); }
+:root:not(.dark) [class~="bg-[#1e293b]/55"] { background-color: rgba(255,255,255,.65); }
+:root:not(.dark) [class~="bg-[#1e293b]/60"] { background-color: rgba(255,255,255,.7); }
+:root:not(.dark) [class~="bg-[#1e293b]/70"] { background-color: rgba(255,255,255,.8); }
+:root:not(.dark) [class~="bg-[#1e293b]/75"] { background-color: rgba(255,255,255,.82); }
+:root:not(.dark) [class~="bg-[#1e293b]/80"] { background-color: rgba(255,255,255,.85); }
+:root:not(.dark) [class~="bg-[#1e293b]/90"] { background-color: rgba(255,255,255,.92); }
+:root:not(.dark) [class~="bg-[#475569]"] { background-color: #cbd5e1; }
+
+/* --- surfaces (slate family, dark-first only) --------------------------- */
+:root:not(.dark) [class~="bg-slate-700"] { background-color: #cbd5e1; }
+:root:not(.dark) [class~="bg-slate-800"] { background-color: #e2e8f0; }
+:root:not(.dark) [class~="bg-slate-800/30"] { background-color: rgba(226,232,240,.4); }
+:root:not(.dark) [class~="bg-slate-800/40"] { background-color: rgba(226,232,240,.5); }
+:root:not(.dark) [class~="bg-slate-800/50"] { background-color: rgba(226,232,240,.6); }
+:root:not(.dark) [class~="bg-slate-800/60"] { background-color: rgba(226,232,240,.7); }
+:root:not(.dark) [class~="bg-slate-800/80"] { background-color: rgba(226,232,240,.85); }
+:root:not(.dark) [class~="bg-slate-900"] { background-color: #ffffff; }
+
+/* --- hover surfaces ----------------------------------------------------- */
+:root:not(.dark) [class~="hover:bg-[#162033]"]:hover { background-color: #f8fafc; }
+:root:not(.dark) [class~="hover:bg-[#1a263d]"]:hover { background-color: #f1f5f9; }
+:root:not(.dark) [class~="hover:bg-[#1e293b]"]:hover { background-color: #ffffff; }
+:root:not(.dark) [class~="hover:bg-slate-700"]:hover { background-color: #cbd5e1; }
+:root:not(.dark) [class~="hover:bg-slate-800"]:hover { background-color: #e2e8f0; }
+
+/* --- borders ------------------------------------------------------------ */
+:root:not(.dark) [class~="border-[#1e293b]"] { border-color: #e2e8f0; }
+:root:not(.dark) [class~="border-[#334155]"] { border-color: #cbd5e1; }
+:root:not(.dark) [class~="border-[#334155]/60"] { border-color: rgba(203,213,225,.7); }
+:root:not(.dark) [class~="border-[#334155]/70"] { border-color: rgba(203,213,225,.8); }
+:root:not(.dark) [class~="border-[#334155]/80"] { border-color: rgba(203,213,225,.9); }
+:root:not(.dark) [class~="border-[#475569]"] { border-color: #94a3b8; }
+:root:not(.dark) [class~="border-slate-400"] { border-color: #94a3b8; }
+:root:not(.dark) [class~="border-slate-600"] { border-color: #cbd5e1; }
+:root:not(.dark) [class~="border-slate-600/60"] { border-color: rgba(203,213,225,.7); }
+:root:not(.dark) [class~="border-slate-600/70"] { border-color: rgba(203,213,225,.8); }
+:root:not(.dark) [class~="border-slate-600/80"] { border-color: rgba(203,213,225,.9); }
+:root:not(.dark) [class~="border-slate-700"] { border-color: #cbd5e1; }
+:root:not(.dark) [class~="border-slate-700/60"] { border-color: rgba(203,213,225,.7); }
+:root:not(.dark) [class~="border-slate-700/70"] { border-color: rgba(203,213,225,.8); }
+:root:not(.dark) [class~="border-slate-700/80"] { border-color: rgba(203,213,225,.9); }
+:root:not(.dark) [class~="border-slate-800"] { border-color: #e2e8f0; }
+:root:not(.dark) [class~="divide-slate-800"] > :not([hidden]) ~ :not([hidden]) { border-color: #e2e8f0; }
+:root:not(.dark) [class~="divide-[#334155]/60"] > :not([hidden]) ~ :not([hidden]) { border-color: rgba(203,213,225,.7); }
+
+/* --- gradient stops authored for dark surfaces -------------------------- */
+:root:not(.dark) [class~="from-[#111e38]"] { --tw-gradient-from: #ffffff var(--tw-gradient-from-position); }
+:root:not(.dark) [class~="via-[#0f172a]"] { --tw-gradient-via: #ffffff var(--tw-gradient-via-position); }
+:root:not(.dark) [class~="to-[#0a1226]"] { --tw-gradient-to: #f1f5f9 var(--tw-gradient-to-position); }
+:root:not(.dark) [class~="to-[#162033]"] { --tw-gradient-to: #f8fafc var(--tw-gradient-to-position); }
+:root:not(.dark) [class~="to-[#0f172a]/85"] { --tw-gradient-to: rgba(255,255,255,.85) var(--tw-gradient-to-position); }
+
+/* --- text --------------------------------------------------------------- */
+:root:not(.dark) [class~="text-slate-100"] { color: #0f172a; }
+:root:not(.dark) [class~="text-slate-200"] { color: #1e293b; }
+:root:not(.dark) [class~="text-slate-300"] { color: #334155; }
+:root:not(.dark) [class~="text-slate-400"] { color: #475569; }
+:root:not(.dark) [class~="hover:text-slate-200"]:hover { color: #1e293b; }
+:root:not(.dark) [class~="group-hover:text-slate-300"] { color: #334155; }
+:root:not(.dark) [class~="placeholder:text-slate-400"]::placeholder { color: #64748b; }
+:root:not(.dark) [class~="placeholder:text-slate-500"]::placeholder { color: #64748b; }
+
+/* --- `text-white` -------------------------------------------------------
+   `text-white` sits on two different kinds of surface. On a coloured button
+   it must stay white in both themes; on a dark card it must become dark ink
+   once that card turns white. The base rule flips it, then the rescue rules
+   restore white wherever a coloured background is present (on the element
+   itself, or on an ancestor) and win on specificity (0,4,0 vs 0,3,0). */
+:root:not(.dark) [class~="text-white"] { color: #0f172a; }
+:root:not(.dark) [class~="hover:text-white"]:hover { color: #0f172a; }
+:root:not(.dark) [class~="group-hover:text-white"] { color: #0f172a; }
+/* --- `text-white` on coloured surfaces ----------------------------------
+   These rules restore white text wherever the element - or an ancestor -
+   carries a saturated coloured background OR a coloured gradient stop. They
+   beat the flip rule further up on specificity (0,4,0 vs 0,3,0), and are
+   listed AFTER it so equal-specificity cases resolve to white as well.
+   Gradient stops must be matched explicitly: a button styled only with
+   `bg-gradient-to-r from-rose-600 to-red-600` carries no `bg-rose-*` class. */
+:root:not(.dark) [class~="text-white"][class*="bg-indigo-"],
+:root:not(.dark) [class*="bg-indigo-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-indigo-"],
+:root:not(.dark) [class~="text-white"][class*="to-indigo-"],
+:root:not(.dark) [class*="from-indigo-"] [class~="text-white"],
+:root:not(.dark) [class*="to-indigo-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-rose-"],
+:root:not(.dark) [class*="bg-rose-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-rose-"],
+:root:not(.dark) [class~="text-white"][class*="to-rose-"],
+:root:not(.dark) [class*="from-rose-"] [class~="text-white"],
+:root:not(.dark) [class*="to-rose-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-emerald-"],
+:root:not(.dark) [class*="bg-emerald-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-emerald-"],
+:root:not(.dark) [class~="text-white"][class*="to-emerald-"],
+:root:not(.dark) [class*="from-emerald-"] [class~="text-white"],
+:root:not(.dark) [class*="to-emerald-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-amber-"],
+:root:not(.dark) [class*="bg-amber-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-amber-"],
+:root:not(.dark) [class~="text-white"][class*="to-amber-"],
+:root:not(.dark) [class*="from-amber-"] [class~="text-white"],
+:root:not(.dark) [class*="to-amber-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-red-"],
+:root:not(.dark) [class*="bg-red-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-red-"],
+:root:not(.dark) [class~="text-white"][class*="to-red-"],
+:root:not(.dark) [class*="from-red-"] [class~="text-white"],
+:root:not(.dark) [class*="to-red-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-cyan-"],
+:root:not(.dark) [class*="bg-cyan-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-cyan-"],
+:root:not(.dark) [class~="text-white"][class*="to-cyan-"],
+:root:not(.dark) [class*="from-cyan-"] [class~="text-white"],
+:root:not(.dark) [class*="to-cyan-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-violet-"],
+:root:not(.dark) [class*="bg-violet-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-violet-"],
+:root:not(.dark) [class~="text-white"][class*="to-violet-"],
+:root:not(.dark) [class*="from-violet-"] [class~="text-white"],
+:root:not(.dark) [class*="to-violet-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-sky-"],
+:root:not(.dark) [class*="bg-sky-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-sky-"],
+:root:not(.dark) [class~="text-white"][class*="to-sky-"],
+:root:not(.dark) [class*="from-sky-"] [class~="text-white"],
+:root:not(.dark) [class*="to-sky-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-teal-"],
+:root:not(.dark) [class*="bg-teal-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-teal-"],
+:root:not(.dark) [class~="text-white"][class*="to-teal-"],
+:root:not(.dark) [class*="from-teal-"] [class~="text-white"],
+:root:not(.dark) [class*="to-teal-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-blue-"],
+:root:not(.dark) [class*="bg-blue-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-blue-"],
+:root:not(.dark) [class~="text-white"][class*="to-blue-"],
+:root:not(.dark) [class*="from-blue-"] [class~="text-white"],
+:root:not(.dark) [class*="to-blue-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-green-"],
+:root:not(.dark) [class*="bg-green-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-green-"],
+:root:not(.dark) [class~="text-white"][class*="to-green-"],
+:root:not(.dark) [class*="from-green-"] [class~="text-white"],
+:root:not(.dark) [class*="to-green-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-orange-"],
+:root:not(.dark) [class*="bg-orange-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-orange-"],
+:root:not(.dark) [class~="text-white"][class*="to-orange-"],
+:root:not(.dark) [class*="from-orange-"] [class~="text-white"],
+:root:not(.dark) [class*="to-orange-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-pink-"],
+:root:not(.dark) [class*="bg-pink-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-pink-"],
+:root:not(.dark) [class~="text-white"][class*="to-pink-"],
+:root:not(.dark) [class*="from-pink-"] [class~="text-white"],
+:root:not(.dark) [class*="to-pink-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-purple-"],
+:root:not(.dark) [class*="bg-purple-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-purple-"],
+:root:not(.dark) [class~="text-white"][class*="to-purple-"],
+:root:not(.dark) [class*="from-purple-"] [class~="text-white"],
+:root:not(.dark) [class*="to-purple-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-yellow-"],
+:root:not(.dark) [class*="bg-yellow-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-yellow-"],
+:root:not(.dark) [class~="text-white"][class*="to-yellow-"],
+:root:not(.dark) [class*="from-yellow-"] [class~="text-white"],
+:root:not(.dark) [class*="to-yellow-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-lime-"],
+:root:not(.dark) [class*="bg-lime-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-lime-"],
+:root:not(.dark) [class~="text-white"][class*="to-lime-"],
+:root:not(.dark) [class*="from-lime-"] [class~="text-white"],
+:root:not(.dark) [class*="to-lime-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="bg-fuchsia-"],
+:root:not(.dark) [class*="bg-fuchsia-"] [class~="text-white"],
+:root:not(.dark) [class~="text-white"][class*="from-fuchsia-"],
+:root:not(.dark) [class~="text-white"][class*="to-fuchsia-"],
+:root:not(.dark) [class*="from-fuchsia-"] [class~="text-white"],
+:root:not(.dark) [class*="to-fuchsia-"] [class~="text-white"] { color: #ffffff; }
+
+/* --- pale-on-dark accent text ------------------------------------------
+   These tints are legible on navy but wash out on white, so they darken. */
+:root:not(.dark) [class~="text-indigo-200"] { color: #3730a3; }
+:root:not(.dark) [class~="text-indigo-300"] { color: #4338ca; }
+:root:not(.dark) [class~="text-cyan-200"] { color: #0e7490; }
+:root:not(.dark) [class~="text-cyan-300"] { color: #0e7490; }
+:root:not(.dark) [class~="text-emerald-200"] { color: #047857; }
+:root:not(.dark) [class~="text-emerald-300"] { color: #047857; }
+:root:not(.dark) [class~="text-rose-200"] { color: #be123c; }
+:root:not(.dark) [class~="text-rose-300"] { color: #be123c; }
+:root:not(.dark) [class~="text-amber-200"] { color: #b45309; }
+:root:not(.dark) [class~="text-amber-300"] { color: #b45309; }
+
+/* --- translucent hairlines authored for dark surfaces ------------------- */
+:root:not(.dark) [class*="border-white/"] { border-color: #cbd5e1; }
+:root:not(.dark) [class*="divide-white/"] { border-color: #cbd5e1; }
+:root:not(.dark) [class*="bg-white/"] { background-color: #f1f5f9; }
+
+/* --- native controls ---------------------------------------------------- */
+:root:not(.dark) input,
+:root:not(.dark) select,
+:root:not(.dark) textarea { color-scheme: light; }
