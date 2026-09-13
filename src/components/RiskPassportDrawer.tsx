@@ -59,6 +59,7 @@ import {
 import type { Project, AuditResponse } from '@/lib/types';
 import { formatINR, formatCrores } from '@/lib/format';
 import { useAuth } from '@/lib/AuthContext';
+import { motion } from 'framer-motion';
 
 interface RiskPassportDrawerProps {
   project: Project;
@@ -213,13 +214,20 @@ export function RiskPassportDrawer({
   };
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 overflow-hidden bg-slate-950/80 backdrop-blur-md"
       onClick={onClose}
     >
-      <div
+      <motion.aside
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
-        className="absolute inset-y-0 right-0 flex w-full max-w-5xl flex-col border-l border-slate-700 bg-[#0b132b] shadow-2xl transition-all duration-300"
+        className="absolute inset-y-0 right-0 flex w-full max-w-5xl flex-col border-l border-slate-700 bg-[#0b132b] shadow-2xl"
       >
         {/* Drawer Header Banner */}
         <header className="flex items-center justify-between border-b border-slate-800 bg-[#0f172a] px-6 py-4">
@@ -854,8 +862,8 @@ export function RiskPassportDrawer({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </motion.aside>
+    </motion.div>
   );
 }
 

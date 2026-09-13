@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import {
   Activity,
   AlertTriangle,
@@ -669,17 +670,18 @@ export function LiveRiskSimulator({ onOpenScrutinyQueue }: { onOpenScrutinyQueue
                   fill="transparent"
                 />
                 {/* Animated Dynamic Progress Gauge */}
-                <circle
+                <motion.circle
                   cx="64"
                   cy="64"
                   r={radius}
                   stroke={circleColor}
                   strokeWidth="10"
                   strokeDasharray={circumference}
-                  strokeDashoffset={strokeDashoffset}
+                  initial={{ strokeDashoffset: circumference }}
+                  animate={{ strokeDashoffset }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
                   strokeLinecap="round"
                   fill="transparent"
-                  className="transition-all duration-300 ease-out"
                 />
               </svg>
               {/* Inner Label */}

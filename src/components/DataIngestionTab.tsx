@@ -13,6 +13,8 @@ import {
   UploadCloud,
   X,
 } from 'lucide-react';
+import { useTheme } from '@/components/ThemeProvider';
+import { playIfEnabled } from '@/lib/soundFX';
 import {
   getAdminToken,
   ingestMospiStream,
@@ -70,6 +72,7 @@ export function DataIngestionTab({
   onIngested,
   onPurged,
 }: DataIngestionTabProps) {
+  const { isMuted } = useTheme();
   const [token, setToken] = useState<string>(() => getAdminToken());
 
   // --- Local cache invalidation state -------------------------------------
@@ -108,6 +111,7 @@ export function DataIngestionTab({
   // ------------------------------------------------------------------------
   const handlePurge = useCallback(async () => {
     if (!canPurge) return;
+    playIfEnabled(isMuted, 'playClick');
     setPurging(true);
     setPurgeNotice(null);
 
@@ -132,7 +136,7 @@ export function DataIngestionTab({
     setPurgeNotice({ kind: 'ok', text: result.data.message });
 
     onPurged?.(remaining);
-  }, [canPurge, onPurged]);
+  }, [canPurge, isMuted, onPurged]);
 
   // ------------------------------------------------------------------------
   // Panel 2 — MoSPI dataset ingestion
@@ -170,6 +174,7 @@ export function DataIngestionTab({
 
   const handleIngest = useCallback(async () => {
     if (!file || ingesting) return;
+    playIfEnabled(isMuted, 'playClick');
     setIngesting(true);
     setIngestNotice(null);
     setSummary(null);
@@ -177,7 +182,10 @@ export function DataIngestionTab({
     const result = await ingestMospiStream(file, setProgress);
     setIngesting(false);
 
-    if (result.data) setSummary(result.data);
+    if (result.data) {
+      setSummary(result.data);
+      if (result.ok) playIfEnabled(isMuted, 'playSuccess');
+    }
 
     if (!result.ok) {
       setIngestNotice({ kind: 'err', text: result.error || 'Ingestion failed.' });
@@ -193,7 +201,7 @@ export function DataIngestionTab({
     });
 
     if (result.data) onIngested?.(result.data);
-  }, [file, ingesting, onIngested]);
+  }, [file, ingesting, isMuted, onIngested]);
 
   const progressLabel = useMemo(() => {
     if (progress.phase === 'parsed') return 'Validating & scoring';

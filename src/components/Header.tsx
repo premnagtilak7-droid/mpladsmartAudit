@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import {
   Search,
   Command,
@@ -21,9 +22,12 @@ import {
   KeyRound,
   Filter,
   Printer,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { useAuth, PRESET_ACCOUNTS, type UserRole } from '@/lib/AuthContext';
 import { useTheme } from '@/components/ThemeProvider';
+import { playIfEnabled } from '@/lib/soundFX';
 import type { Project } from '@/lib/types';
 
 interface HeaderProps {
@@ -44,7 +48,7 @@ export function Header({
   projects = [],
 }: HeaderProps) {
   const { user, loginAs, logoutToCitizen, switchModalOpen, setSwitchModalOpen, restrictedAlert, setRestrictedAlert } = useAuth();
-  const { theme, toggle } = useTheme();
+  const { theme, toggle, isMuted, toggleMute } = useTheme();
 
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -156,14 +160,19 @@ export function Header({
           {/* Right Action Controls */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Run Analysis CTA Button — live recalculation pass */}
-            <button
+            <motion.button
               type="button"
-              onClick={onRunAnalysis || onOpenAnalysis}
+              onClick={() => {
+                playIfEnabled(isMuted, 'playClick');
+                (onRunAnalysis || onOpenAnalysis)?.();
+              }}
+              whileHover={{ scale: 1.015 }}
+              whileTap={{ scale: 0.97 }}
               className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-500 shadow-md shadow-emerald-950/40 active:scale-95"
             >
               <Play size={13} fill="currentColor" />
               <span>Run Analysis</span>
-            </button>
+            </motion.button>
 
             {/* Print Scheme Dossier CTA — opens the browser print sheet */}
             <button
@@ -190,6 +199,19 @@ export function Header({
               className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700/70 bg-[#0f172a] text-slate-300 hover:text-white hover:border-slate-500 transition"
             >
               {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                toggleMute();
+                if (isMuted) playIfEnabled(false, 'playClick');
+              }}
+              aria-label={`UI Sound Effects: ${isMuted ? 'OFF' : 'ON'}`}
+              title={`UI Sound Effects: ${isMuted ? 'OFF' : 'ON'}`}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700/70 bg-[#0f172a] text-slate-300 transition hover:border-cyan-400/60 hover:text-white"
+            >
+              {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
             </button>
 
             {/* User Profile Dropdown & Switch Role */}

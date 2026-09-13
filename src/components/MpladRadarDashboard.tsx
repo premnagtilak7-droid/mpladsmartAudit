@@ -59,6 +59,7 @@ import {
 } from 'recharts';
 import { useProjects } from '@/lib/useProjects';
 import { useTheme } from '@/components/ThemeProvider';
+import { playIfEnabled } from '@/lib/soundFX';
 import { useLang } from '@/lib/i18n/LangContext';
 import { formatCrores, formatINR } from '@/lib/format';
 import {
@@ -121,7 +122,7 @@ type ModuleId =
 
 export default function MpladRadarDashboard() {
   const { projects, analytics, loading, error, live, recordCount, reload } = useProjects();
-  const { theme, toggle } = useTheme();
+  const { isMuted } = useTheme();
   const { lang: language, setLang, t } = useLang();
   const { user, isRestrictedForCitizen, setSwitchModalOpen, canAccessAdminOnly } = useAuth();
   const [role, setRole] = useState<PortalRole>('central');
@@ -135,6 +136,12 @@ export default function MpladRadarDashboard() {
     setVerifyId(params.get('verify') || '');
   }, []);
 
+
+  useEffect(() => {
+    if (passportProject && (passportProject.risk_score || 0) >= 80) {
+      playIfEnabled(isMuted, 'playAlert');
+    }
+  }, [passportProject, isMuted]);
 
   useEffect(() => {
     if (user.role === 'citizen') {
@@ -531,6 +538,13 @@ export default function MpladRadarDashboard() {
               </div>
             )}
 
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: 'easeOut' } }}
+                exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+              >
             {activeTab === 'overview' && (
               <section className="space-y-6">
                 <ExecutiveCommandHub
@@ -755,6 +769,7 @@ export default function MpladRadarDashboard() {
                     },
                     ...s,
                   ]);
+                  playIfEnabled(isMuted, 'playSuccess');
                   reload();
                 }}
                 onPurged={(remaining) => {
@@ -766,6 +781,7 @@ export default function MpladRadarDashboard() {
                     },
                     ...s,
                   ]);
+                  playIfEnabled(isMuted, 'playSuccess');
                   reload();
                 }}
               />
@@ -774,20 +790,24 @@ export default function MpladRadarDashboard() {
             {activeTab === 'notes' && (
               <OfficialNotes lockedProjects={lockedProjects} auditLogs={auditLogs} />
             )}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </main>
       </div>
       )}
 
-      {passportProject && (
-        <RiskPassportDrawer
-          project={passportProject}
-          projects={projects}
-          onClose={() => setPassportProject(null)}
-          onFreeze={() => freezeProject(passportProject)}
-          onExportMemo={(narrative) => exportMemo(passportProject, narrative)}
-        />
-      )}
+      <AnimatePresence>
+        {passportProject && (
+          <RiskPassportDrawer
+            project={passportProject}
+            projects={projects}
+            onClose={() => setPassportProject(null)}
+            onFreeze={() => freezeProject(passportProject)}
+            onExportMemo={(narrative) => exportMemo(passportProject, narrative)}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {selected && (
@@ -849,17 +869,24 @@ function SideItem({
   collapsed?: boolean;
   badge?: number;
 }) {
+  const { isMuted } = useTheme();
   return (
     <button
-      onClick={onClick}
+      onClick={() => {
+        playIfEnabled(isMuted, 'playTab');
+        onClick();
+      }}
       className={`relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold transition ${active
         ? 'border border-indigo-400/60 bg-gradient-to-r from-indigo-500/20 to-blue-500/10 text-indigo-100 shadow-[0_0_18px_rgba(99,102,241,0.28)]'
         : 'border border-transparent text-slate-400 hover:border-slate-600 hover:bg-white/5 hover:text-slate-100'}`}
     >
-      {icon}
-      {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
-      {!collapsed && badge != null && <span className="ml-auto min-w-5 rounded-full bg-rose-500 px-1.5 py-0.5 text-center text-[9px] font-black text-white">{badge}</span>}
-      {collapsed && badge != null && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500" title={`${badge} high-risk anomalies`} />}
+      {active && <motion.div layoutId="activeTab" className="absolute inset-0 -z-0 rounded-lg bg-indigo-500/10 shadow-[0_0_24px_rgba(99,102,241,.22)]" transition={{ type: 'spring', stiffness: 420, damping: 32 }} />}
+      <span className="relative z-10 flex w-full items-center gap-2">
+        {icon}
+        {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
+        {!collapsed && badge != null && <span className="ml-auto min-w-5 rounded-full bg-rose-500 px-1.5 py-0.5 text-center text-[9px] font-black text-white">{badge}</span>}
+        {collapsed && badge != null && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500" title={`${badge} high-risk anomalies`} />}
+      </span>
     </button>
   );
 }

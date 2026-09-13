@@ -15,15 +15,20 @@ interface ThemeCtx {
   theme: Theme;
   toggle: () => void;
   setTheme: (t: Theme) => void;
+  isMuted: boolean;
+  toggleMute: () => void;
 }
 
 const Ctx = createContext<ThemeCtx | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('dark');
+  const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
     const stored = window.localStorage.getItem('mplad-theme');
+    const storedMute = window.localStorage.getItem('mplad-sound-muted');
+    if (storedMute === 'true' || storedMute === 'false') setIsMuted(storedMute === 'true');
     if (stored === 'light' || stored === 'dark') {
       setThemeState(stored);
     } else {
@@ -39,13 +44,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem('mplad-theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    window.localStorage.setItem('mplad-sound-muted', String(isMuted));
+  }, [isMuted]);
+
   const value = useMemo<ThemeCtx>(
     () => ({
       theme,
       setTheme: setThemeState,
       toggle: () => setThemeState((current) => (current === 'dark' ? 'light' : 'dark')),
+      isMuted,
+      toggleMute: () => setIsMuted((current) => !current),
     }),
-    [theme],
+    [theme, isMuted],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
