@@ -137,11 +137,6 @@ export default function MpladRadarDashboard() {
   }, []);
 
 
-  useEffect(() => {
-    if (passportProject && (passportProject.risk_score || 0) >= 80) {
-      playIfEnabled(isMuted, 'playAlert');
-    }
-  }, [passportProject, isMuted]);
 
   useEffect(() => {
     if (user.role === 'citizen') {
@@ -167,6 +162,13 @@ export default function MpladRadarDashboard() {
 
   const [selected, setSelected] = useState<Project | null>(null);
   const [passportProject, setPassportProject] = useState<Project | null>(null);
+
+  useEffect(() => {
+    if (passportProject && (passportProject.risk_score || 0) >= 80) {
+      playIfEnabled(isMuted, 'playAlert');
+    }
+  }, [passportProject, isMuted]);
+
   const [memoProject, setMemoProject] = useState<Project | null>(null);
   const [memoNarrative, setMemoNarrative] = useState('');
 
