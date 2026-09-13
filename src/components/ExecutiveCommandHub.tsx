@@ -42,6 +42,8 @@ import {
 } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { formatCrores, formatINR } from '@/lib/format';
+import AnimatedCounter from '@/components/ui/AnimatedCounter';
+import ScrollReveal from '@/components/ui/ScrollReveal';
 
 interface ExecutiveCommandHubProps {
   projects: Project[];
@@ -146,7 +148,7 @@ export function ExecutiveCommandHub({
                 className="mt-3 text-2xl font-black text-slate-900 dark:text-slate-100 sm:text-3xl"
                 style={{ backgroundColor: 'rgb(244, 239, 239)', color: 'rgb(1, 1, 1)' }}
               >
-              {kpiData.totalProjects.toLocaleString('en-IN')}
+              <AnimatedCounter value={kpiData.totalProjects} />
             </div>
             <div className="mt-1 text-[11px] text-slate-400">
               Live Supabase coverage
@@ -162,7 +164,7 @@ export function ExecutiveCommandHub({
               <AlertTriangle size={16} className="text-rose-400 animate-bounce" />
             </div>
             <div className="mt-3 text-2xl font-black text-rose-400 sm:text-3xl">
-              {kpiData.flagged.toLocaleString('en-IN')}
+              <AnimatedCounter value={kpiData.flagged} />
             </div>
             <div className="mt-1 text-[11px] text-rose-300/80">
               Filtered down from {kpiData.totalProjects.toLocaleString('en-IN')} total proposals
@@ -181,7 +183,7 @@ export function ExecutiveCommandHub({
                 className="mt-3 text-2xl font-black text-slate-900 dark:text-slate-100 sm:text-3xl"
                 style={{ backgroundColor: 'rgb(245, 242, 242)', color: 'rgb(83, 102, 248)' }}
               >
-              ₹{kpiData.sanctionedCrores} Cr
+              <AnimatedCounter value={kpiData.totalSanctionedValue / 10_000_000} prefix="₹" suffix=" Cr" decimals={2} />
             </div>
             <div className="mt-1 text-[11px] text-slate-400">
               Cumulative AA&amp;ES authorization
@@ -197,7 +199,7 @@ export function ExecutiveCommandHub({
               <FileCheck2 size={16} className="text-amber-400" />
             </div>
             <div className="mt-3 text-2xl font-black text-amber-300 sm:text-3xl">
-              {kpiData.openInquiries} Open
+              <AnimatedCounter value={kpiData.openInquiries} suffix=" Open" />
             </div>
             <div className="mt-1 text-[11px] text-slate-400">
               Field verifications &amp; officer audits
@@ -227,7 +229,8 @@ export function ExecutiveCommandHub({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ScrollReveal className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
           {/* Engine 1 */}
           <div className="premium-panel flex flex-col justify-between rounded-xl border border-slate-700/80 bg-[#162033]/80 p-5 shadow-lg transition hover:border-blue-400/60 hover:bg-[#1a263d]">
             <div>
@@ -236,7 +239,7 @@ export function ExecutiveCommandHub({
                   <TrendingUp size={20} />
                 </div>
                 <span className="rounded-full bg-blue-500/20 px-2.5 py-0.5 text-[10px] font-bold text-blue-300 border border-blue-400/30">
-                  +53.8% Avg Outlier
+                  +<AnimatedCounter value={53.8} suffix="%" decimals={2} /> Avg Outlier
                 </span>
               </div>
               <div className="mt-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400" style={{ color: 'rgb(7, 7, 7)' }}>
@@ -395,7 +398,7 @@ export function ExecutiveCommandHub({
               Explore Engine &rarr;
             </button>
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
       {/* 3. LIVE AI RISK ENGINE & EXPLAINABILITY SIMULATOR */}
@@ -686,7 +689,7 @@ export function LiveRiskSimulator({ onOpenScrutinyQueue }: { onOpenScrutinyQueue
               </svg>
               {/* Inner Label */}
               <div className="absolute flex flex-col items-center justify-center text-center">
-                <span className="text-3xl font-black text-slate-900 dark:text-slate-100" style={{ color: 'rgb(7, 6, 3)' }}>{score}</span>
+                <AnimatedCounter value={score} className="text-3xl font-black text-slate-900 dark:text-slate-100" suffix="" />
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Out of 100</span>
               </div>
             </div>

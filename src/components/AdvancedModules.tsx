@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { MapPin, ShieldCheck, TriangleAlert, Printer, X, LockKeyhole, FileWarning } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatINR } from '@/lib/format';
+import AnimatedCounter from '@/components/ui/AnimatedCounter';
 import type { Project } from '@/lib/types';
 import type { MapAsset } from '@/components/AssetMap';
 
@@ -24,7 +25,7 @@ export function ComplianceWidget({ projects }: { projects: Project[] }) {
   </section>;
 }
 
-function ComplianceBar({ label, target, actual }: { label: string; target: number; actual: number }) { const safe = Math.min(100, actual); return <div className="mb-4 last:mb-0"><div className="mb-1.5 flex justify-between text-[11px]"><span className="font-semibold">{label} <span className="text-slate-400">target {target}%</span></span><b className={actual >= target ? 'text-emerald-500' : 'text-amber-500'}>{actual.toFixed(1)}%</b></div><div className="relative h-2 rounded-full bg-slate-100 dark:bg-white/10" style={{ color: 'rgb(133, 251, 15)' }}><div className={`h-full rounded-full ${actual >= target ? 'bg-emerald-400' : 'bg-amber-400'}`} style={{ width: `${safe}%` }} /><span className="absolute top-[-3px] h-4 w-px bg-slate-500/60" style={{ left: `${target}%` }} /></div></div>; }
+function ComplianceBar({ label, target, actual }: { label: string; target: number; actual: number }) { const safe = Math.min(100, actual); return <div className="mb-4 last:mb-0"><div className="mb-1.5 flex justify-between text-[11px]"><span className="font-semibold">{label} <span className="text-slate-400">target {target}%</span></span><b className={actual >= target ? 'text-emerald-500' : 'text-amber-500'}><AnimatedCounter value={actual} suffix="%" decimals={2} /></b></div><div className="relative h-2 rounded-full bg-slate-100 dark:bg-white/10" style={{ color: 'rgb(133, 251, 15)' }}><div className={`h-full rounded-full ${actual >= target ? 'bg-emerald-400' : 'bg-amber-400'}`} style={{ width: `${safe}%` }} /><span className="absolute top-[-3px] h-4 w-px bg-slate-500/60" style={{ left: `${target}%` }} /></div></div>; }
 
 function isConstituency(project: Project, category: 'SC' | 'ST') { const text = `${project.constituency || ''} ${project.state || ''}`.toUpperCase(); return new RegExp(`(?:\\(|\\s|-)${category}(?:\\)|\\s|$)`).test(text); }
 

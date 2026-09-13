@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { formatINR } from '@/lib/format';
+import ScrollReveal from '@/components/ui/ScrollReveal';
 
 interface OperationalWorkflowHubProps {
   onStepClick: (stepId: number) => void;
@@ -119,9 +120,10 @@ export function OperationalWorkflowHub({
     <div className="space-y-6">
       {/* 6-Card Step Grid */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-        {steps.map((st) => {
+        {steps.map((st, index) => {
           const Icon = st.icon;
           return (
+            <ScrollReveal key={st.id} delay={index * 0.08}>
             <div
               key={st.id}
               className="relative flex flex-col justify-between rounded-2xl border border-slate-700/80 bg-[#0f172a]/90 p-5 shadow-xl transition-all duration-200 hover:-translate-y-1 hover:border-slate-500 hover:bg-[#162033]"
@@ -173,6 +175,7 @@ export function OperationalWorkflowHub({
                 </button>
               </div>
             </div>
+            </ScrollReveal>
           );
         })}
       </div>
