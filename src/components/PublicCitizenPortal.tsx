@@ -1,3 +1,5 @@
+'use client';
+
 import { CitizenPortal, AuthorityWorkspace } from './PortalViews';
 
 export { CitizenPortal, AuthorityWorkspace };

@@ -60,6 +60,7 @@ import {
 import { useProjects } from '@/lib/useProjects';
 import { useTheme } from '@/components/ThemeProvider';
 import { playIfEnabled } from '@/lib/soundFX';
+import AnimatedCounter from '@/components/ui/AnimatedCounter';
 import { useLang } from '@/lib/i18n/LangContext';
 import { formatCrores, formatINR } from '@/lib/format';
 import {
@@ -245,6 +246,11 @@ export default function MpladRadarDashboard() {
       { name: 'Normal', value: normal, percent: (normal / total) * 100, displayValue: normal ? Math.log10(normal + 1) : 0, label: normal.toLocaleString('en-IN'), fill: '#10e981', glow: 'drop-shadow(0 0 8px rgba(16,233,129,.75))' },
     ];
   }, [scopedProjects]);
+
+  const inspectProject = (project: Project) => {
+    playIfEnabled(isMuted, 'playClick');
+    setPassportProject(project);
+  };
 
   const freezeProject = (project: Project) => {
     if (isRestrictedForCitizen('Freeze Disbursement & Officer Lock')) return;
@@ -551,7 +557,7 @@ export default function MpladRadarDashboard() {
               <section className="space-y-6">
                 <ExecutiveCommandHub
                   projects={scopedProjects}
-                  onInspectWork={(p) => setPassportProject(p)}
+                  onInspectWork={inspectProject}
                   onExploreEngine={exploreEngine}
                   onOpenScrutinyQueue={() => setActiveTab('anomalies')}
                 />
@@ -620,7 +626,7 @@ export default function MpladRadarDashboard() {
                   <button onClick={() => setOverviewMode('matrix')} className={`rounded-lg px-3 py-2 text-[11px] font-black ${overviewMode === 'matrix' ? 'bg-indigo-600 text-white' : 'border border-[#334155] bg-[#0f172a] text-slate-300'}`}>Signal Matrix</button>
                 </div>
                 {overviewMode === 'matrix' ? (
-                  <SignalMatrix projects={scopedProjects} onInspect={(p) => setPassportProject(p)} />
+                  <SignalMatrix projects={scopedProjects} onInspect={inspectProject} />
                 ) : viewMode === 'map' ? (
                   <section className="overflow-hidden rounded-2xl border border-[#334155] bg-[#1e293b]/75 shadow-2xl shadow-black/20 backdrop-blur-xl">
                     <div className="flex items-center justify-between border-b border-[#334155]/70 px-4 py-3">
@@ -632,7 +638,7 @@ export default function MpladRadarDashboard() {
                         Back to table
                       </button>
                     </div>
-                    <GISMapView projects={scopedProjects} onInspect={(p) => setPassportProject(p)} />
+                    <GISMapView projects={scopedProjects} onInspect={inspectProject} />
                   </section>
                 ) : (
                   <section className="rounded-2xl border border-[#334155] bg-[#1e293b]/75 shadow-2xl shadow-black/20 backdrop-blur-xl">
@@ -651,7 +657,7 @@ export default function MpladRadarDashboard() {
                       projects={pagedProjects}
                       loading={loading}
                       lockedProjects={lockedProjects}
-                      onInspect={(p) => setPassportProject(p)}
+                      onInspect={inspectProject}
                       onFreeze={freezeProject}
                     />
                     <PaginationFooter
@@ -682,7 +688,7 @@ export default function MpladRadarDashboard() {
                 projects={highRiskRows}
                 lockedProjects={lockedProjects}
                 onFreeze={freezeProject}
-                onInspect={(p) => setPassportProject(p)}
+                onInspect={inspectProject}
                 onGenerateMemo={(project) => exportMemo(project, buildMemoNarrativeFromProject(project))}
               />
             )}
@@ -691,7 +697,7 @@ export default function MpladRadarDashboard() {
               <AllWorksBrowse
                 projects={projects}
                 lockedProjects={lockedProjects}
-                onInspect={(p) => setPassportProject(p)}
+                onInspect={inspectProject}
                 onFreeze={freezeProject}
               />
             )}
@@ -699,14 +705,14 @@ export default function MpladRadarDashboard() {
             {activeTab === 'geospatial' && (
               <GeospatialDistribution
                 projects={scopedProjects}
-                onInspect={(p) => setPassportProject(p)}
+                onInspect={inspectProject}
               />
             )}
 
             {activeTab === 'duplicates' && (
               <DuplicateProposals
                 projects={scopedProjects}
-                onInspect={(p) => setPassportProject(p)}
+                onInspect={inspectProject}
               />
             )}
 
@@ -716,7 +722,7 @@ export default function MpladRadarDashboard() {
                 cases={caseFiles}
                 onOpenCase={openCase}
                 onAdvanceCase={advanceCase}
-                onInspect={(p) => setPassportProject(p)}
+                onInspect={inspectProject}
                 onPrintCase={printCase}
               />
             )}
@@ -724,7 +730,7 @@ export default function MpladRadarDashboard() {
             {activeTab === 'statutory' && (
               <StatutoryReports
                 projects={scopedProjects}
-                onInspect={(p) => setPassportProject(p)}
+                onInspect={inspectProject}
               />
             )}
 
@@ -741,7 +747,7 @@ export default function MpladRadarDashboard() {
                 projects={projects}
                 weights={riskWeights}
                 onWeightsChange={setRiskWeights}
-                onInspect={(p) => setPassportProject(p)}
+                onInspect={inspectProject}
               />
             )}
 
@@ -930,7 +936,7 @@ function MospiKpiGrid({ loading, projects }: { loading: boolean; projects: Proje
               <div
                 className="text-lg font-black text-slate-900 dark:text-slate-100"
                 style={{ color: ['rgb(34, 57, 225)', 'rgb(7, 3, 4)', 'rgb(215, 181, 42)', 'rgb(215, 94, 42)', 'rgb(42, 215, 201)', 'rgb(129, 215, 42)'][cards.indexOf(card)] }}
-              >{card.count == null ? `₹${formatCrores(card.value)}` : `${card.count.toLocaleString('en-IN')} ${card.countLabel}`}</div>
+              >{card.count == null ? <AnimatedCounter value={card.value / 10_000_000} prefix="₹" suffix=" Cr" decimals={2} /> : <><AnimatedCounter value={card.count} /> {card.countLabel}</>}</div>
               {card.count != null && <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">₹{formatCrores(card.value)}</div>}
             </>
           )}

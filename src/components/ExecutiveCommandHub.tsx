@@ -137,7 +137,7 @@ export function ExecutiveCommandHub({
         {/* 4 KPI CARDS */}
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* Card 1: Total Sanctions Tracked */}
-          <div className="group rounded-xl border border-slate-700/70 bg-[#0f172a]/90 p-4 shadow-inner transition hover:border-blue-400/50">
+          <div className="group rounded-xl border border-slate-700/70 bg-[#0f172a]/90 p-4 shadow-inner transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-blue-400/50">
             <div className="flex items-center justify-between text-slate-400">
               <span className="text-[11px] font-bold uppercase tracking-wider">
                 Total Sanctions Tracked

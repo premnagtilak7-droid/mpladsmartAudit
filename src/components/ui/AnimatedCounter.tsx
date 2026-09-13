@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useInView } from 'framer-motion';
+import { useEffect, useState } from 'react';
 
 interface AnimatedCounterProps {
-  value: number;
+  value: number | string;
   duration?: number;
   prefix?: string;
   suffix?: string;
@@ -12,39 +11,35 @@ interface AnimatedCounterProps {
   className?: string;
 }
 
-const formatIndian = (value: number, decimals: 0 | 2) =>
-  new Intl.NumberFormat('en-IN', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value);
-
-export function AnimatedCounter({
+export default function AnimatedCounter({
   value,
-  duration = 1.2,
+  duration = 1000,
   prefix = '',
   suffix = '',
   decimals = 0,
   className,
 }: AnimatedCounterProps) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-60px' });
-  const [display, setDisplay] = useState(0);
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (!inView) return;
-    const start = performance.now();
+    let startTime: number | null = null;
     let frame = 0;
-    const easeOutExpo = (progress: number) => progress === 1 ? 1 : 1 - 2 ** (-10 * progress);
-    const tick = (now: number) => {
-      const progress = Math.min(1, (now - start) / (duration * 1000));
-      setDisplay(value * easeOutExpo(progress));
-      if (progress < 1) frame = requestAnimationFrame(tick);
+    const endValue = typeof value === 'number' ? value : parseFloat(value) || 0;
+    const step = (timestamp: number) => {
+      if (startTime === null) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      const easeOut = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      setCount(easeOut * endValue);
+      if (progress < 1) frame = requestAnimationFrame(step);
     };
-    frame = requestAnimationFrame(tick);
+    frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
-  }, [duration, inView, value]);
+  }, [value, duration]);
 
-  return <span ref={ref} className={className}>{prefix}{formatIndian(display, decimals)}{suffix}</span>;
+  const formatted = count.toLocaleString('en-IN', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+
+  return <span className={className}>{prefix}{formatted}{suffix}</span>;
 }
-
-export default AnimatedCounter;
