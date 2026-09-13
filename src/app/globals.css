@@ -528,6 +528,11 @@ body {
 :root:not(.dark) [class~="text-rose-300"] { color: #be123c; }
 :root:not(.dark) [class~="text-amber-200"] { color: #b45309; }
 :root:not(.dark) [class~="text-amber-300"] { color: #b45309; }
+:root:not(.dark) [class~="text-rose-100"]    { color: #be123c; }
+:root:not(.dark) [class~="text-cyan-100"]    { color: #0e7490; }
+:root:not(.dark) [class~="text-emerald-100"] { color: #047857; }
+:root:not(.dark) [class~="text-indigo-100"]  { color: #3730a3; }
+:root:not(.dark) [class~="text-purple-300"]  { color: #7e22ce; }
 
 /* --- translucent hairlines authored for dark surfaces ------------------- */
 :root:not(.dark) [class*="border-white/"] { border-color: #cbd5e1; }
