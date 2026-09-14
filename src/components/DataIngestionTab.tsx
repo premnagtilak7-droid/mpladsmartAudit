@@ -461,7 +461,7 @@ export function DataIngestionTab({
                   Drag &amp; drop the MoSPI CSV here
                 </div>
                 <div className="mt-1 text-[11px] text-slate-500">
-                  or click to browse — CSV only, up to 40 MB
+                  or click to browse — CSV only, up to 100 MB
                 </div>
               </>
             )}
