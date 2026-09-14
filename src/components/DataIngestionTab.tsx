@@ -173,35 +173,59 @@ export function DataIngestionTab({
   );
 
   const handleIngest = useCallback(async () => {
-    if (!file || ingesting) return;
+    if (ingesting) return;
+    if (!file) {
+      setIngestNotice({ kind: 'err', text: 'Choose an official CSV file before ingesting.' });
+      return;
+    }
+    if (!tokenReady) {
+      setIngestNotice({ kind: 'err', text: 'Enter the ADMIN_API_TOKEN before ingesting data.' });
+      return;
+    }
+
     playIfEnabled(isMuted, 'playClick');
     setIngesting(true);
     setIngestNotice(null);
     setSummary(null);
 
-    const result = await ingestMospiStream(file, setProgress);
-    setIngesting(false);
+    try {
+      const result = await ingestMospiStream(file, setProgress);
 
-    if (result.data) {
-      setSummary(result.data);
-      if (result.ok) playIfEnabled(isMuted, 'playSuccess');
+      if (result.data) {
+        setSummary(result.data);
+        if (result.ok) playIfEnabled(isMuted, 'playSuccess');
+      }
+
+      if (!result.ok) {
+        setIngestNotice({ kind: 'err', text: result.error || 'Ingestion failed.' });
+        return;
+      }
+
+      const wrote = result.data?.projects_written ?? 0;
+      const signals = result.data?.signals_written ?? 0;
+      setLocalCount((prev) => (prev ?? 0) + wrote);
+      setIngestNotice({
+        kind: 'ok',
+        text: `Ingested ${wrote.toLocaleString('en-IN')} projects and ${signals.toLocaleString('en-IN')} anomaly signals.`,
+      });
+
+      if (result.data) onIngested?.(result.data);
+    } catch (cause) {
+      const message = cause instanceof Error
+        ? cause.message
+        : 'Failed to ingest dataset. Please check your admin token and CSV file.';
+      console.error('MPLADS ingestion error:', cause);
+      setProgress((current) => ({
+        ...current,
+        phase: 'error',
+        percent: 0,
+        message,
+      }));
+      setIngestNotice({ kind: 'err', text: message });
+    } finally {
+      setIngesting(false);
     }
-
-    if (!result.ok) {
-      setIngestNotice({ kind: 'err', text: result.error || 'Ingestion failed.' });
-      return;
-    }
-
-    const wrote = result.data?.projects_written ?? 0;
-    const signals = result.data?.signals_written ?? 0;
-    setLocalCount((prev) => (prev ?? 0) + wrote);
-    setIngestNotice({
-      kind: 'ok',
-      text: `Ingested ${wrote.toLocaleString('en-IN')} projects and ${signals.toLocaleString('en-IN')} anomaly signals.`,
-    });
-
-    if (result.data) onIngested?.(result.data);
-  }, [file, ingesting, isMuted, onIngested]);
+  }, [file, ingesting, isMuted, onIngested, tokenReady]);
 
   const progressLabel = useMemo(() => {
     if (progress.phase === 'parsed') return 'Validating & scoring';
