@@ -12,14 +12,15 @@ import { ADMIN_TOKEN_HEADER, assertOfficer, getAdminClient } from '@/lib/supabas
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// The official MoSPI export is ~11k rows; reject anything obviously oversized.
-const MAX_UPLOAD_BYTES = 40 * 1024 * 1024; // 40 MB
+// The official house-separated exports can exceed 40 MB (Rajya Sabha recommended
+// works is currently larger), so keep the guard generous but bounded.
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024; // 100 MB
 
 /** Rows written per PostgREST round-trip. Smaller = smoother progress events. */
 const BATCH_SIZE = 250;
 
 /** Hard ceiling so a malformed file cannot exhaust the function's memory. */
-const MAX_ROWS = 50_000;
+const MAX_ROWS = 250_000;
 
 // ---------------------------------------------------------------------------
 // Progress event contract (NDJSON stream)
@@ -62,6 +63,23 @@ interface LoadedPayload {
   format: 'csv' | 'json';
   sources: string[];
   warnings: string[];
+}
+
+function sourceHouse(fileName: string): 'Lok Sabha' | 'Rajya Sabha' | null {
+  const name = fileName.toLowerCase();
+  if (name.includes('lok') || name.includes('loksabha')) return 'Lok Sabha';
+  if (name.includes('rajya') || name.includes('rajyasabha')) return 'Rajya Sabha';
+  return null;
+}
+
+function decorateOfficialHouse(records: RawRecord[], fileName: string): RawRecord[] {
+  const fallback = sourceHouse(fileName);
+  return records.map((record) => ({
+    ...record,
+    // Completed-work exports omit HOUSE_OF_PARLIAMENT; use the source filename
+    // for those files while preserving the portal value when it exists.
+    house: record.house ?? record.HOUSE_OF_PARLIAMENT ?? fallback ?? 'Unknown',
+  }));
 }
 
 async function loadPayload(req: NextRequest): Promise<LoadedPayload> {
@@ -109,11 +127,11 @@ async function loadPayload(req: NextRequest): Promise<LoadedPayload> {
             `Optional columns not present and left blank: ${check.absent_optional.join(', ')}.`,
           );
         }
-        records.push(...parsed);
+        records.push(...decorateOfficialHouse(parsed, file.name));
         format = 'csv';
       } else {
         const parsed = parseDataset(text, file.name);
-        records.push(...parsed.records);
+        records.push(...decorateOfficialHouse(parsed.records, file.name));
         format = 'json';
       }
 

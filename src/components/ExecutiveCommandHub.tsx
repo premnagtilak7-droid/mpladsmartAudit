@@ -146,7 +146,7 @@ export function ExecutiveCommandHub({
             </div>
               <div
                 className="mt-3 text-2xl font-black text-slate-900 dark:text-slate-100 sm:text-3xl"
-                style={{ backgroundColor: 'rgb(244, 239, 239)', color: 'rgb(1, 1, 1)' }}
+                style={{ backgroundColor: 'rgba(0, 0, 0, 0.05)', color: 'rgb(1, 1, 1)' }}
               >
               <AnimatedCounter value={kpiData.totalProjects} />
             </div>
@@ -181,7 +181,7 @@ export function ExecutiveCommandHub({
             </div>
               <div
                 className="mt-3 text-2xl font-black text-slate-900 dark:text-slate-100 sm:text-3xl"
-                style={{ backgroundColor: 'rgb(245, 242, 242)', color: 'rgb(83, 102, 248)' }}
+                style={{ backgroundColor: 'rgba(0, 0, 0, 0.04)', color: 'rgb(83, 102, 248)' }}
               >
               <AnimatedCounter value={kpiData.totalSanctionedValue / 10_000_000} prefix="₹" suffix=" Cr" decimals={2} />
             </div>

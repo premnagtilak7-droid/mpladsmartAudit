@@ -153,6 +153,7 @@ export default function MpladRadarDashboard() {
   const [mobileNav, setMobileNav] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [query, setQuery] = useState('');
+  const [houseFilter, setHouseFilter] = useState('All Houses');
   const [stateFilter, setStateFilter] = useState('All States');
   const [constituencyFilter, setConstituencyFilter] = useState('All Constituencies');
   const [anomalyFilter, setAnomalyFilter] = useState<'All Types' | AnomalyType>('All Types');
@@ -188,23 +189,32 @@ export default function MpladRadarDashboard() {
     at: string;
   } | null>(null);
 
-  const states = useMemo(
-    () => ['All States', ...new Set(projects.map((p) => p.state || 'Unknown'))],
+  const houses = useMemo(
+    () => ['All Houses', ...new Set(projects.map((p) => p.house || 'Unknown'))],
     [projects],
   );
 
+  const states = useMemo(
+    () => ['All States', ...new Set(projects.filter((p) => houseFilter === 'All Houses' || (p.house || 'Unknown') === houseFilter).map((p) => p.state || 'Unknown'))],
+    [projects, houseFilter],
+  );
+
   const constituencyOptions = useMemo(() => {
-    const source = stateFilter === 'All States'
+    const houseScoped = houseFilter === 'All Houses'
       ? projects
-      : projects.filter((p) => (p.state || 'Unknown') === stateFilter);
+      : projects.filter((p) => (p.house || 'Unknown') === houseFilter);
+    const source = stateFilter === 'All States'
+      ? houseScoped
+      : houseScoped.filter((p) => (p.state || 'Unknown') === stateFilter);
     return ['All Constituencies', ...new Set(source.map((p) => p.constituency || 'Unknown'))];
   }, [projects, stateFilter]);
 
   const scopedProjects = useMemo(() => {
     return projects
+      .filter((p) => houseFilter === 'All Houses' || (p.house || 'Unknown') === houseFilter)
       .filter((p) => stateFilter === 'All States' || (p.state || 'Unknown') === stateFilter)
       .filter((p) => constituencyFilter === 'All Constituencies' || (p.constituency || 'Unknown') === constituencyFilter);
-  }, [projects, stateFilter, constituencyFilter]);
+  }, [projects, houseFilter, stateFilter, constituencyFilter]);
 
   const filteredProjects = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -225,7 +235,7 @@ export default function MpladRadarDashboard() {
 
   useEffect(() => {
     setPage(1);
-  }, [query, stateFilter, constituencyFilter, anomalyFilter, sortDesc]);
+  }, [query, houseFilter, stateFilter, constituencyFilter, anomalyFilter, sortDesc]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProjects.length / PAGE_SIZE));
   const pagedProjects = filteredProjects.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -645,6 +655,9 @@ export default function MpladRadarDashboard() {
                     <TableFilters
                       query={query}
                       setQuery={setQuery}
+                      houses={houses}
+                      houseFilter={houseFilter}
+                      setHouseFilter={setHouseFilter}
                       states={states}
                       stateFilter={stateFilter}
                       setStateFilter={setStateFilter}
@@ -949,6 +962,9 @@ function MospiKpiGrid({ loading, projects }: { loading: boolean; projects: Proje
 function TableFilters(props: {
   query: string;
   setQuery: (value: string) => void;
+  houses: string[];
+  houseFilter: string;
+  setHouseFilter: (value: string) => void;
   states: string[];
   stateFilter: string;
   setStateFilter: (value: string) => void;
@@ -968,6 +984,13 @@ function TableFilters(props: {
           className="w-full rounded-xl border border-[#334155] bg-[#0f172a] py-2.5 pl-8 pr-3 text-xs text-slate-100 outline-none placeholder:text-slate-500 focus:border-indigo-400"
         />
       </div>
+      <select
+        value={props.houseFilter}
+        onChange={(e) => props.setHouseFilter(e.target.value)}
+        className="rounded-xl border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs font-semibold text-slate-100 outline-none focus:border-indigo-400"
+      >
+        {props.houses.map((house) => <option key={house}>{house}</option>)}
+      </select>
       <select
         value={props.anomalyFilter}
         onChange={(e) => props.setAnomalyFilter(e.target.value as 'All Types' | AnomalyType)}
@@ -1014,7 +1037,7 @@ function ProjectTable({
       <table className="w-full min-w-[920px] text-left text-xs">
         <thead className="bg-[#0f172a]/80 text-[10px] uppercase tracking-wider text-slate-400">
           <tr>
-            <th className="px-4 py-3">Work</th>
+            <th className="px-4 py-3">Work / House</th>
             <th className="px-3 py-3">Vendor</th>
             <th className="px-3 py-3">State / Constituency</th>
             <th className="px-3 py-3">Status</th>
@@ -1029,6 +1052,7 @@ function ProjectTable({
               <td className="px-4 py-3">
                 <div className="max-w-[260px] truncate font-bold" title={project.work || ''}>{project.work || 'Untitled work'}</div>
                 <div className="text-[10px] text-slate-400">{project.work_id || `MPLAD-${project.id}`}</div>
+                <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-indigo-300">{project.house || 'House not supplied'}</div>
               </td>
               <td className="px-3 py-3">
                 <div className="max-w-[180px] truncate">{project.vendor_name || '—'}</div>

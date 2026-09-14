@@ -78,12 +78,12 @@ export const REQUIRED_FIELDS = ['work_id', 'work_title'] as const;
 
 /** Human-readable header names accepted for each canonical field. */
 const FIELD_ALIASES: Record<string, string[]> = {
-  work_id: ['work_id', 'Work ID', 'workId', 'work id', 'WorkID', 'work_code', 'work_no'],
-  work_title: ['work_title', 'Work', 'work', 'Work Title', 'workTitle', 'name', 'title', 'work_name'],
-  category: ['category', 'Category', 'work_category', 'Work Category', 'sector', 'Sector'],
-  district: ['district', 'District', 'District Name', 'district_name'],
-  state: ['state', 'State', 'State Name', 'state_name'],
-  constituency: ['constituency', 'Constituency', 'PC', 'pc_name', 'Parliamentary Constituency'],
+  work_id: ['work_id', 'WORK_ID', 'Work ID', 'workId', 'work id', 'WorkID', 'work_code', 'work_no'],
+  work_title: ['work_title', 'ACTIVITY_NAME', 'WORK_DESCRIPTION', 'Work', 'work', 'Work Title', 'workTitle', 'name', 'title', 'work_name'],
+  category: ['category', 'WORK_CATEGORY', 'Work Category', 'work_category', 'Category', 'sector', 'Sector'],
+  district: ['district', 'IDA_NAME', 'District', 'District Name', 'district_name'],
+  state: ['state', 'STATE_NAME', 'State', 'State Name', 'state_name'],
+  constituency: ['constituency', 'CONSTITUENCY_NAME', 'Constituency', 'PC', 'pc_name', 'Parliamentary Constituency'],
   sanctioned_amount: [
     'sanctioned_amount',
     'Sanctioned Amount',
@@ -92,6 +92,8 @@ const FIELD_ALIASES: Record<string, string[]> = {
     'sanctioned_amt',
     'Allocated Amount',
     'allocated_amount',
+    'RECOMMENDED_AMOUNT',
+    'SANCTIONED_AMOUNT',
   ],
   spent_amount: [
     'spent_amount',
@@ -105,16 +107,18 @@ const FIELD_ALIASES: Record<string, string[]> = {
     'Fund Disbursed',
   ],
   vendor_name: ['vendor_name', 'Vendor Name', 'vendor', 'Vendor', 'contractor', 'Contractor'],
-  status: ['status', 'Status', 'Payment Status', 'payment_status', 'Stage', 'stage', 'project_status'],
+  status: ['status', 'WORK_STATUS', 'PAYMENT_STATUS', 'Status', 'Payment Status', 'payment_status', 'Stage', 'stage', 'project_status'],
   latitude: ['latitude', 'Latitude', 'lat', 'Lat', 'y'],
   longitude: ['longitude', 'Longitude', 'lng', 'Lng', 'lon', 'Long', 'x'],
   target_area: ['target_area', 'Target Area', 'TargetArea', 'area_type', 'Area Type', 'category_area'],
   sanction_date: ['sanction_date', 'Sanction Date', 'sanctionDate', 'date_sanctioned', 'approved_date'],
-  completion_date: ['completion_date', 'Completion Date', 'completionDate', 'date_completed', 'completed_date'],
-  expenditure_date: ['expenditure_date', 'Expenditure Date', 'expenditureDate', 'payment_date'],
-  ida: ['ida', 'IDA', 'implementing_agency', 'Implementing Agency'],
-  mp: ['mp', "Hon'ble Members of Parliament", 'MP Name', 'member_of_parliament'],
-  sr_no: ['sr_no', 'Sr. No.', 'Sr No', 'srno', 'serial', 'S.No'],
+  completion_date: ['completion_date', 'COMPLETION_DATE', 'COMPLETION_DATE_TIME', 'Completion Date', 'completionDate', 'date_completed', 'completed_date'],
+  ida: ['ida', 'IDA', 'IDA_NAME', 'implementing_agency', 'Implementing Agency'],
+  mp: ['mp', 'MP_NAME', "Hon'ble Members of Parliament", 'MP Name', 'member_of_parliament'],
+  house: ['house', 'HOUSE_OF_PARLIAMENT', 'House of Parliament', 'parliament_house'],
+  recommendation_date: ['recommendation_date', 'RECOMMENDATION_DATE', 'Recommended date', 'Recommendation Date'],
+  expenditure_date: ['expenditure_date', 'EXPENDITURE_DATE', 'Expenditure Date', 'expenditureDate', 'payment_date'],
+  sr_no: ['sr_no', 'Sno', 'Sr. No.', 'Sr No', 'srno', 'serial', 'S.No'],
 };
 
 const PROHIBITED_KEYWORDS = [

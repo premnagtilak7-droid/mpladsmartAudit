@@ -130,6 +130,12 @@ export interface MospiProject {
   spent_amount: number | null;
   vendor_name: string | null;
   status: string | null;
+  house: 'Lok Sabha' | 'Rajya Sabha' | string | null;
+  mp: string | null;
+  ida: string | null;
+  recommendation_date: string | null;
+  expenditure_date: string | null;
+  completion_date: string | null;
   latitude: number | null;
   longitude: number | null;
   target_area: string;
@@ -186,6 +192,13 @@ export function normalizeMospiRecord(raw: RawRecord): NormalizeOutcome {
   const state = asText(pick(raw, 'state'));
   const constituency = asText(pick(raw, 'constituency'));
   const ida = asText(pick(raw, 'ida'));
+  const mp = asText(pick(raw, 'mp'));
+  const houseRaw = asText(pick(raw, 'house'));
+  const house = houseRaw === '1' || /rajya/i.test(houseRaw || '')
+    ? 'Rajya Sabha'
+    : houseRaw === '2' || /lok/i.test(houseRaw || '')
+      ? 'Lok Sabha'
+      : houseRaw;
 
   const district =
     asText(pick(raw, 'district')) ?? deriveDistrict(ida) ?? constituency ?? null;
@@ -208,6 +221,12 @@ export function normalizeMospiRecord(raw: RawRecord): NormalizeOutcome {
       spent_amount: spent,
       vendor_name: asText(pick(raw, 'vendor_name')),
       status: asText(pick(raw, 'status')),
+      house,
+      mp,
+      ida,
+      recommendation_date: asDate(pick(raw, 'recommendation_date')),
+      expenditure_date: asDate(pick(raw, 'expenditure_date')),
+      completion_date: asDate(pick(raw, 'completion_date')),
       latitude: asCoordinate(pick(raw, 'latitude'), 'lat'),
       longitude: asCoordinate(pick(raw, 'longitude'), 'lng'),
       target_area: deriveTargetArea(pick(raw, 'target_area'), constituency),

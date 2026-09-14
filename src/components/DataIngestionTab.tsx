@@ -152,8 +152,8 @@ export function DataIngestionTab({
       setIngestNotice({ kind: 'err', text: 'Only CSV files are accepted. Export the MoSPI dataset as CSV.' });
       return;
     }
-    if (candidate.size > 40 * 1024 * 1024) {
-      setIngestNotice({ kind: 'err', text: 'File exceeds the 40 MB limit.' });
+    if (candidate.size > 100 * 1024 * 1024) {
+      setIngestNotice({ kind: 'err', text: 'File exceeds the 100 MB limit.' });
       return;
     }
 

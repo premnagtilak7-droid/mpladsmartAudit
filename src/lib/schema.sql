@@ -26,6 +26,9 @@ create table if not exists public.projects (
     work_id           text unique not null,
     work_title        text,
     category          text,
+    house             text not null default 'Unknown',
+    mp                text,
+    ida               text,
     district          text,
     state             text,
     constituency      text,
@@ -38,10 +41,23 @@ create table if not exists public.projects (
     longitude         numeric(10, 7),
     -- General / SC / ST statutory target area
     target_area       text default 'General',
+    recommendation_date timestamp,
     sanction_date     timestamp,
+    expenditure_date  timestamp,
     completion_date   timestamp,
     created_at        timestamptz not null default now()
 );
+
+-- Safe upgrades for databases created from the earlier schema.
+alter table public.projects add column if not exists house text not null default 'Unknown';
+alter table public.projects add column if not exists mp text;
+alter table public.projects add column if not exists ida text;
+alter table public.projects add column if not exists recommendation_date timestamp;
+alter table public.projects add column if not exists expenditure_date timestamp;
+alter table public.projects add column if not exists completion_date timestamp;
+
+create index if not exists projects_house_idx on public.projects (house);
+create index if not exists projects_mp_idx on public.projects (mp);
 
 create index if not exists projects_state_idx          on public.projects (state);
 create index if not exists projects_district_idx       on public.projects (district);

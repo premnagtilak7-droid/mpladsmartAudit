@@ -25,6 +25,8 @@ export interface RiskDriver {
 /** Row shape from the Supabase `projects` table (analytics + risk enrichment). */
 export interface Project {
   id: number;
+  /** Official parliamentary house from the e-SAKSHI source. */
+  house?: 'Lok Sabha' | 'Rajya Sabha' | string | null;
   /** "Sr. No." */
   sr_no: string | null;
   /** "State" */

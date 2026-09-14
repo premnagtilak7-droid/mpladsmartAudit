@@ -1,9 +1,11 @@
 'use client';
 
-import { motion, type MotionProps } from 'framer-motion';
-import type { ReactNode } from 'react';
+import { motion } from 'framer-motion';
+import type { CSSProperties, ReactNode } from 'react';
 
-interface ScrollRevealProps extends Pick<MotionProps, 'className' | 'style'> {
+interface ScrollRevealProps {
+  className?: string;
+  style?: CSSProperties;
   children: ReactNode;
   delay?: number;
 }

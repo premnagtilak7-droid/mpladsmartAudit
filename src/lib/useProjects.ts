@@ -109,13 +109,14 @@ function normalizeProject(row: SupabaseProjectRow, index: number): Project {
 
   return {
     id: numberValue(row.id) || index + 1,
+    house: houseValue(row.house ?? row.house_of_parliament ?? row.HOUSE_OF_PARLIAMENT ?? row['House of Parliament']),
     sr_no: textValue(row.sr_no ?? row['Sr. No.']),
     state: textValue(row.state ?? row.State),
-    work: textValue(row.work ?? row.Work),
+    work: textValue(row.work ?? row.work_title ?? row.Work ?? row.ACTIVITY_NAME),
     work_id: textValue(row.work_id ?? row['Work ID']),
     ida: textValue(row.ida ?? row.IDA),
-    mp: textValue(row.mp ?? row["Hon'ble Members of Parliament"]),
-    constituency: textValue(row.constituency ?? row.Constituency),
+    mp: textValue(row.mp ?? row.mp_name ?? row.MP_NAME ?? row["Hon'ble Members of Parliament"]),
+    constituency: textValue(row.constituency ?? row.Constituency ?? row.CONSTITUENCY_NAME),
     expenditure_date: textValue(row.expenditure_date ?? row['Expenditure Date']),
     vendor_name: textValue(row.vendor_name ?? row['Vendor Name']),
     payment_status: textValue(row.payment_status ?? row['Payment Status'] ?? row.status ?? row.Status),
@@ -123,9 +124,9 @@ function normalizeProject(row: SupabaseProjectRow, index: number): Project {
     stage: textValue(row.stage ?? row.Stage ?? row.project_stage ?? row['Project Stage']),
     latitude: numberValue(row.latitude ?? row.lat ?? row.Latitude ?? row.Lat),
     longitude: numberValue(row.longitude ?? row.lng ?? row.Longitude ?? row.Lng),
-    amount,
+    amount: amount ?? numberValue(row.spent_amount ?? row.sanctioned_amount ?? row['Fund Disbursed Amount ( ₹ )']),
     allocated_amount: numberValue(row.allocated_amount ?? row['Allocated Amount'] ?? row['Allocated AMOUNT (₹)']),
-    sanctioned_amount: numberValue(row.sanctioned_amount ?? row['Sanctioned Amount'] ?? row['Sanctioned AMOUNT (₹)']),
+    sanctioned_amount: numberValue(row.sanctioned_amount ?? row['Sanctioned Amount'] ?? row['Sanctioned AMOUNT (₹)'] ?? row.RECOMMENDED_AMOUNT ?? row.SANCTIONED_AMOUNT),
     risk_score: riskScore,
     anomaly_type: anomaly,
     risk_drivers: riskDrivers(row.risk_drivers),
@@ -133,6 +134,13 @@ function normalizeProject(row: SupabaseProjectRow, index: number): Project {
     delay_days: numberValue(row.delay_days),
     completion_percent: numberValue(row.completion_percent),
   };
+}
+
+function houseValue(value: unknown): Project['house'] {
+  const text = textValue(value)?.toLowerCase() ?? '';
+  if (text.includes('rajya') || text === '1') return 'Rajya Sabha';
+  if (text.includes('lok') || text === '2') return 'Lok Sabha';
+  return textValue(value);
 }
 
 function computeLiveAnalytics(rows: Project[]): Analytics {
