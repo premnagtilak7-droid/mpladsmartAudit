@@ -1,10 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cyslsdavhkpyrdeljvow.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5c2xzZGF2aGtweXJkZWxqdm93Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4Nzc5MzksImV4cCI6MjEwNDQ1MzkzOX0.hVRwI9DJ_3fTFqVb8iXTwivLnznC9zQbvH4mlM2E8to';
+// Next.js evaluates this module during both server rendering and browser
+// hydration. Always give the SDK syntactically valid values so a missing or
+// temporarily unavailable Vercel environment variable cannot crash the app.
+const PLACEHOLDER_URL = 'https://placeholder.supabase.co';
+const PLACEHOLDER_ANON_KEY = 'placeholder-anon-key';
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+const configuredUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || '';
+const configuredAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || '';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
+export const isSupabaseConfigured = Boolean(configuredUrl && configuredAnonKey);
+
+export const supabase = createClient(
+  configuredUrl || PLACEHOLDER_URL,
+  configuredAnonKey || PLACEHOLDER_ANON_KEY,
+  { auth: { persistSession: false, autoRefreshToken: false } },
+);
