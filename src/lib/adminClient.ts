@@ -230,10 +230,16 @@ interface StreamEvent {
  * Uploads a MoSPI dataset to /api/ingest-mospi and streams NDJSON progress
  * events back to `onProgress` as each batch is written to Supabase.
  */
+const MAX_VERCEL_UPLOAD_BYTES = 2_500_000;
+
 export async function ingestMospiStream(
   payload: File | { records: unknown[] },
   onProgress: (progress: MospiProgress) => void,
 ): Promise<ApiResult<MospiSummary>> {
+  if (typeof File !== 'undefined' && payload instanceof File && payload.size > MAX_VERCEL_UPLOAD_BYTES) {
+    return ingestMospiCsvInChunks(payload, onProgress);
+  }
+
   const headers: Record<string, string> = { 'x-admin-token': getAdminToken() };
 
   let body: BodyInit;
@@ -366,6 +372,79 @@ export async function ingestMospiStream(
     return { ok: finalSummary.ok, status: 200, data: finalSummary };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Network error during ingestion.';
+    onProgress({ phase: 'error', percent: 0, projectsWritten: 0, signalsWritten: 0, total: 0, message });
+    return { ok: false, status: 0, error: message };
+  }
+}
+
+/** Keep large CSV requests below Vercel's serverless body limit. */
+async function ingestMospiCsvInChunks(
+  file: File,
+  onProgress: (progress: MospiProgress) => void,
+): Promise<ApiResult<MospiSummary>> {
+  try {
+    const text = await file.text();
+    const firstBreak = text.indexOf('\n');
+    if (firstBreak < 0) return { ok: false, status: 422, error: 'The CSV has no data rows.' };
+
+    const header = text.slice(0, firstBreak + 1);
+    const rows = text.slice(firstBreak + 1).split(/\r?\n/).filter((row) => row.trim());
+    const chunks: string[] = [];
+    let current = header;
+
+    for (const row of rows) {
+      const candidate = `${current}${row}\n`;
+      if (current !== header && new Blob([candidate]).size > MAX_VERCEL_UPLOAD_BYTES) {
+        chunks.push(current);
+        current = `${header}${row}\n`;
+      } else {
+        current = candidate;
+      }
+    }
+    if (current !== header) chunks.push(current);
+    if (chunks.length === 0) return { ok: false, status: 422, error: 'The CSV has no importable rows.' };
+
+    const aggregate: MospiSummary = {
+      ok: true, format: 'csv', sources: [file.name], rows_received: 0,
+      projects_written: 0, signals_written: 0, skipped_count: 0, skipped: [],
+      warnings: [`Uploaded in ${chunks.length} secure chunks to avoid HTTP 413.`],
+      batches: 0, summary: { high_risk_projects: 0, avg_risk_score: 0, flag_distribution: {}, mode: 'csv' },
+      errors: [], at: new Date().toISOString(),
+    };
+    let weightedRiskTotal = 0;
+
+    for (let index = 0; index < chunks.length; index += 1) {
+      const chunk = new File([chunks[index]], file.name, { type: 'text/csv' });
+      const result = await ingestMospiStream(chunk, (progress) => onProgress({
+        ...progress,
+        percent: Math.min(99, Math.round(((index + progress.percent / 100) / chunks.length) * 100)),
+        message: `Chunk ${index + 1} of ${chunks.length}: ${progress.message}`,
+      }));
+      if (!result.ok || !result.data) return { ok: false, status: result.status, error: result.error || `Chunk ${index + 1} failed.` };
+
+      const part = result.data;
+      aggregate.rows_received += part.rows_received;
+      aggregate.projects_written += part.projects_written;
+      aggregate.signals_written += part.signals_written;
+      aggregate.skipped_count += part.skipped_count;
+      aggregate.skipped.push(...part.skipped);
+      aggregate.warnings.push(...part.warnings);
+      aggregate.errors.push(...part.errors);
+      aggregate.batches += part.batches;
+      aggregate.summary.high_risk_projects += part.summary.high_risk_projects;
+      weightedRiskTotal += part.summary.avg_risk_score * part.projects_written;
+      for (const [flag, count] of Object.entries(part.summary.flag_distribution)) {
+        aggregate.summary.flag_distribution[flag] = (aggregate.summary.flag_distribution[flag] || 0) + count;
+      }
+    }
+
+    aggregate.summary.avg_risk_score = aggregate.projects_written
+      ? Math.round((weightedRiskTotal / aggregate.projects_written) * 100) / 100
+      : 0;
+    onProgress({ phase: 'complete', percent: 100, projectsWritten: aggregate.projects_written, signalsWritten: aggregate.signals_written, total: aggregate.rows_received, message: `Committed ${aggregate.projects_written.toLocaleString('en-IN')} projects in ${chunks.length} chunks.` });
+    return { ok: true, status: 200, data: aggregate };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Large CSV upload failed.';
     onProgress({ phase: 'error', percent: 0, projectsWritten: 0, signalsWritten: 0, total: 0, message });
     return { ok: false, status: 0, error: message };
   }
