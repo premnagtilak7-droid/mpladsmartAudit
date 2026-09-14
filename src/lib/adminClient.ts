@@ -230,7 +230,9 @@ interface StreamEvent {
  * Uploads a MoSPI dataset to /api/ingest-mospi and streams NDJSON progress
  * events back to `onProgress` as each batch is written to Supabase.
  */
-const MAX_VERCEL_UPLOAD_BYTES = 2_500_000;
+// Stay well below Vercel's request and execution limits. Smaller chunks also
+// make each scoring request finish quickly instead of appearing stuck at 0%.
+const MAX_VERCEL_UPLOAD_BYTES = 750_000;
 
 export async function ingestMospiStream(
   payload: File | { records: unknown[] },
@@ -266,6 +268,7 @@ export async function ingestMospiStream(
       method: 'POST',
       headers: { ...headers, Accept: 'application/x-ndjson' },
       body,
+      signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(55_000) : undefined,
     });
 
     // Non-streaming error responses (auth / validation) arrive as plain JSON.
