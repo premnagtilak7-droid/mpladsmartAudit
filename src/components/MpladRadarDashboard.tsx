@@ -57,7 +57,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useProjects } from '@/lib/useProjects';
+import { useProjects, type MospiSummary } from '@/lib/useProjects';
 import { useTheme } from '@/components/ThemeProvider';
 import { playIfEnabled } from '@/lib/soundFX';
 import AnimatedCounter from '@/components/ui/AnimatedCounter';
@@ -122,7 +122,7 @@ type ModuleId =
   | 'notes';
 
 export default function MpladRadarDashboard() {
-  const { projects, analytics, loading, error, live, recordCount, reload } = useProjects();
+  const { projects, analytics, summary, loading, error, live, recordCount, reload } = useProjects();
   const { isMuted } = useTheme();
   const { lang: language, setLang, t } = useLang();
   const { user, isRestrictedForCitizen, setSwitchModalOpen, canAccessAdminOnly } = useAuth();
@@ -599,7 +599,7 @@ export default function MpladRadarDashboard() {
                   }}
                 />
 
-                <MospiKpiGrid loading={loading} projects={projects} />
+                <MospiKpiGrid loading={loading} projects={projects} summary={summary} />
                 <div className="mb-0 rounded-xl border border-cyan-400/25 bg-gradient-to-r from-indigo-500/15 via-blue-500/10 to-emerald-500/10 px-4 py-3 text-sm font-black text-slate-100 shadow-[0_0_28px_rgba(34,211,238,0.08)]">
                   Active AI Vigilance Batch: {recordCount.toLocaleString('en-IN')} Ingested Works <span className="mx-1 text-slate-500">|</span> Total Disbursed: ₹{formatCrores(analytics.totalFunds)} <span className="mx-1 text-slate-500">|</span> <span className="text-rose-300">{analytics.flaggedHighRisk.toLocaleString('en-IN')} High Risk Fraud Cases</span>
                 </div>
@@ -918,7 +918,7 @@ function RiskTooltip({ active, payload }: { active?: boolean; payload?: Array<{ 
   return <div className="rounded-lg border border-[#334155] bg-[#0f172a] px-3 py-2 text-[11px] text-slate-100 shadow-xl"><div className="font-bold" style={{ color: item.fill }}>{item.name}</div><div>{item.value.toLocaleString('en-IN')} records</div><div className="text-slate-400">{item.percent.toFixed(2)}% of total</div></div>;
 }
 
-function MospiKpiGrid({ loading, projects }: { loading: boolean; projects: Project[] }) {
+function MospiKpiGrid({ loading, projects, summary }: { loading: boolean; projects: Project[]; summary: MospiSummary | null }) {
   const cards = useMemo(() => {
     const totalAllocated = projects.reduce((sum, p) => sum + (Number(p.allocated_amount) || 0), 0);
     const totalSanctioned = projects.reduce((sum, p) => sum + (Number(p.sanctioned_amount) || 0), 0);
@@ -928,14 +928,14 @@ function MospiKpiGrid({ loading, projects }: { loading: boolean; projects: Proje
     const recommendedWorks = projects.length;
 
     return [
-      { label: "Allocated Limit for Hon'ble MPs", count: null, value: totalAllocated, countLabel: '' },
-      { label: 'Amount Sanctioned', count: null, value: totalSanctioned, countLabel: '' },
-      { label: 'Works Recommended', count: recommendedWorks, value: totalAllocated, countLabel: 'works' },
-      { label: 'Works Sanctioned', count: sanctionedWorks, value: totalSanctioned, countLabel: 'works' },
-      { label: 'Works Completed', count: completedWorks, value: totalExpenditure, countLabel: 'works' },
-      { label: 'Scheme Expenditure', count: null, value: totalExpenditure, countLabel: '' },
+      { label: "Allocated Limit for Hon'ble MPs", count: null, value: summary?.allocated_limit ?? totalAllocated, countLabel: '' },
+      { label: 'Calamity Fund Consents', count: null, value: summary?.calamity_amount ?? totalSanctioned, countLabel: '' },
+      { label: 'Works Recommended', count: summary?.works_recommended_count ?? recommendedWorks, value: summary?.works_recommended_amount ?? totalAllocated, countLabel: 'works' },
+      { label: 'Works Sanctioned', count: summary?.works_sanctioned_count ?? sanctionedWorks, value: summary?.works_sanctioned_amount ?? totalSanctioned, countLabel: 'works' },
+      { label: 'Works Completed', count: summary?.works_completed_count ?? completedWorks, value: summary?.works_completed_amount ?? totalExpenditure, countLabel: 'works' },
+      { label: 'Scheme Expenditure', count: null, value: summary?.total_expenditure ?? totalExpenditure, countLabel: '' },
     ];
-  }, [projects]);
+  }, [projects, summary]);
 
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">

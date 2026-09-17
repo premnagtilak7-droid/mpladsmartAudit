@@ -4,9 +4,22 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase, isSupabaseConfigured } from './supabase';
 import type { Analytics, AnomalyType, Project, RiskDriver } from './types';
 
+export interface MospiSummary {
+  allocated_limit: number;
+  calamity_amount: number;
+  works_recommended_count: number;
+  works_recommended_amount: number;
+  works_sanctioned_count: number;
+  works_sanctioned_amount: number;
+  works_completed_count: number;
+  works_completed_amount: number;
+  total_expenditure: number;
+}
+
 export interface ProjectsState {
   projects: Project[];
   analytics: Analytics;
+  summary: MospiSummary | null;
   loading: boolean;
   error: string | null;
   live: boolean;
@@ -23,6 +36,7 @@ type SupabaseProjectRow = Record<string, unknown>;
  */
 export function useProjects(): ProjectsState {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [summary, setSummary] = useState<MospiSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState(false);
@@ -42,6 +56,7 @@ export function useProjects(): ProjectsState {
       if (!supabase || !isSupabaseConfigured) {
         if (!cancelled) {
           setProjects([]);
+          setSummary(null);
           setRecordCount(0);
           setError('NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured.');
           setLoading(false);
@@ -50,6 +65,13 @@ export function useProjects(): ProjectsState {
       }
 
       try {
+        fetchMospiSummary()
+          .then((liveSummary) => {
+            if (!cancelled && liveSummary) setSummary(liveSummary);
+          })
+          .catch(() => {
+            // Keep the project table usable if the RPC has not been deployed yet.
+          });
         let loaded = 0;
         const total = await fetchAllProjects((batch) => {
           if (cancelled) return;
@@ -67,6 +89,7 @@ export function useProjects(): ProjectsState {
       } catch (cause) {
         if (cancelled) return;
         setProjects([]);
+        setSummary(null);
         setRecordCount(0);
         setLive(false);
         setError(cause instanceof Error ? cause.message : 'Unable to query Supabase projects.');
@@ -81,7 +104,26 @@ export function useProjects(): ProjectsState {
   }, [tick]);
 
   const analytics = useMemo(() => computeLiveAnalytics(projects), [projects]);
-  return { projects, analytics, loading, error, live, recordCount, reload };
+  return { projects, analytics, summary, loading, error, live, recordCount, reload };
+}
+
+async function fetchMospiSummary(): Promise<MospiSummary | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc('get_esakshi_summary', { house_filter: 'ALL' });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
+  return {
+    allocated_limit: Number(row.allocated_limit) || 0,
+    calamity_amount: Number(row.calamity_amount) || 0,
+    works_recommended_count: Number(row.works_recommended_count) || 0,
+    works_recommended_amount: Number(row.works_recommended_amount) || 0,
+    works_sanctioned_count: Number(row.works_sanctioned_count) || 0,
+    works_sanctioned_amount: Number(row.works_sanctioned_amount) || 0,
+    works_completed_count: Number(row.works_completed_count) || 0,
+    works_completed_amount: Number(row.works_completed_amount) || 0,
+    total_expenditure: Number(row.total_expenditure) || 0,
+  };
 }
 
 async function fetchAllProjects(onPage: (rows: SupabaseProjectRow[]) => void): Promise<number> {
