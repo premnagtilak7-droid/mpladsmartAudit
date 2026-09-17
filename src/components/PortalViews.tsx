@@ -30,6 +30,9 @@ import { formatCrores, formatINR } from '@/lib/format';
 import { useLang } from '@/lib/i18n/LangContext';
 import type { MapAsset } from './AssetMap';
 import { ProjectQRModal } from '@/components/ProjectQRModal';
+import { CitizenEvidenceUpload } from '@/components/CitizenEvidenceUpload';
+import { ConstituencyScorecard } from '@/components/ConstituencyScorecard';
+import { WhistleblowerPortal } from '@/components/WhistleblowerPortal';
 
 const AssetMap = dynamic(() => import('./AssetMap'), {
   ssr: false,
@@ -221,6 +224,9 @@ export function CitizenPortal({
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [query, setQuery] = useState('');
   const [riskFilter, setRiskFilter] = useState<'all' | 'high' | 'medium' | 'normal'>('all');
+  const [evidenceProject, setEvidenceProject] = useState<Project | null>(null);
+  const [scorecardOpen, setScorecardOpen] = useState(false);
+  const [whistleblowerOpen, setWhistleblowerOpen] = useState(false);
 
   // Handle Geolocation trigger
   const handleUseLocation = () => {
@@ -319,6 +325,7 @@ export function CitizenPortal({
           >
             <MessageSquareText size={14} /> {t.feedback}
           </Button>
+          <Button variant="secondary" onClick={() => setWhistleblowerOpen(true)}><Flag size={14} /> Whistleblower Tip</Button>
         </div>
       </div>
 
@@ -441,15 +448,10 @@ export function CitizenPortal({
               </div>
             </div>
 
-            <div className="mt-4">
-              <Button
-                variant="secondary"
-                onClick={() => setQrProject(selected || projects[0] || null)}
-                className="w-full border-cyan-500/40 text-cyan-200 hover:bg-cyan-950/40"
-              >
-                <QrCode size={14} className="text-cyan-400" />
-                Generate & Inspect Asset QR Code
-              </Button>
+            <div className="mt-4 grid gap-2">
+              <Button variant="secondary" onClick={() => setQrProject(selected || projects[0] || null)} className="w-full border-cyan-500/40 text-cyan-200 hover:bg-cyan-950/40"><QrCode size={14} className="text-cyan-400" /> Generate & Inspect Asset QR Code</Button>
+              <Button variant="secondary" onClick={() => setEvidenceProject(selected || projects[0] || null)} className="w-full"><Camera size={14} /> Report Site Evidence</Button>
+              <Button variant="secondary" onClick={() => setScorecardOpen(true)} className="w-full"><FileText size={14} /> Constituency Scorecard</Button>
             </div>
           </Panel>
 
@@ -541,6 +543,9 @@ export function CitizenPortal({
       {qrProject && (
         <ProjectQRModal project={qrProject} onClose={() => setQrProject(null)} />
       )}
+      {evidenceProject && <CitizenEvidenceUpload project={evidenceProject} onClose={() => setEvidenceProject(null)} onSubmitted={() => setEvidenceProject(null)} />}
+      {scorecardOpen && <ConstituencyScorecard constituency={selected?.constituency || projects[0]?.constituency || 'Unknown'} projects={projects} onClose={() => setScorecardOpen(false)} />}
+      {whistleblowerOpen && <WhistleblowerPortal projects={projects} onClose={() => setWhistleblowerOpen(false)} />}
       {feedbackOpen && (
         <FeedbackModal
           project={feedbackProject || selected || projects[0] || null}
