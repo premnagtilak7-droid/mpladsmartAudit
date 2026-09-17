@@ -38,6 +38,7 @@ import {
 import type { Project } from '@/lib/types';
 import { formatCrores, formatINR } from '@/lib/format';
 import { GISMapView } from '@/components/AdvancedModules';
+import { ProjectQRButton, ProjectQRModal } from '@/components/ProjectQRModal';
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -157,6 +158,7 @@ export function AllWorksBrowse({
   const [stateFilter, setStateFilter] = useState('All States');
   const [sortKey, setSortKey] = useState<'risk' | 'amount' | 'title'>('risk');
   const [limit, setLimit] = useState(100);
+  const [qrProject, setQrProject] = useState<Project | null>(null);
 
   const states = useMemo(
     () => ['All States', ...new Set(projects.map((p) => p.state || 'Unknown'))],
@@ -183,6 +185,7 @@ export function AllWorksBrowse({
   }, [projects, query, stateFilter, sortKey]);
 
   return (
+    <>
     <Panel
       title="All Works (Browse)"
       subtitle="Complete searchable register of every ingested MoSPI work. Filter, sort and open the 360° Risk Passport for any record."
@@ -263,6 +266,7 @@ export function AllWorksBrowse({
                       >
                         Inspect
                       </button>
+                      <ProjectQRButton project={p} onOpen={setQrProject} />
                       {lockedProjects[p.id] ? (
                         <span className="rounded-md border border-rose-400/30 bg-rose-500/15 px-2 py-1 text-[10px] font-black text-rose-200">Locked</span>
                       ) : (
@@ -297,6 +301,8 @@ export function AllWorksBrowse({
         <div className="py-10 text-center text-xs text-slate-400">No works match the current filters.</div>
       )}
     </Panel>
+    {qrProject && <ProjectQRModal project={qrProject} onClose={() => setQrProject(null)} />}
+    </>
   );
 }
 

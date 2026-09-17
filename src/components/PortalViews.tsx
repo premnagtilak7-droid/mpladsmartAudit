@@ -29,6 +29,7 @@ import type { AuditResponse, Project } from '@/lib/types';
 import { formatCrores, formatINR } from '@/lib/format';
 import { useLang } from '@/lib/i18n/LangContext';
 import type { MapAsset } from './AssetMap';
+import { ProjectQRModal } from '@/components/ProjectQRModal';
 
 const AssetMap = dynamic(() => import('./AssetMap'), {
   ssr: false,
@@ -219,6 +220,7 @@ export function CitizenPortal({
   const [feedbackProject, setFeedbackProject] = useState<Project | null>(null);
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [query, setQuery] = useState('');
+  const [riskFilter, setRiskFilter] = useState<'all' | 'high' | 'medium' | 'normal'>('all');
 
   // Handle Geolocation trigger
   const handleUseLocation = () => {
@@ -247,20 +249,24 @@ export function CitizenPortal({
     );
   };
 
-  // Dynamic filter by work title, constituency, or vendor name in real time
+  // Dynamic public search and risk filtering over the visible live dataset.
   const filteredProjects = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return projects;
     return projects.filter((p) => {
-      const matchWork = (p.work || '').toLowerCase().includes(q);
-      const matchConstituency = (p.constituency || '').toLowerCase().includes(q);
-      const matchVendor = (p.vendor_name || '').toLowerCase().includes(q);
-      const matchWorkId = (p.work_id || '').toLowerCase().includes(q);
-      const matchState = (p.state || '').toLowerCase().includes(q);
-      const matchMp = (p.mp || '').toLowerCase().includes(q);
-      return matchWork || matchConstituency || matchVendor || matchWorkId || matchState || matchMp;
+      const score = Number(p.risk_score) || 0;
+      const matchesRisk = riskFilter === 'all'
+        || (riskFilter === 'high' && score >= 80)
+        || (riskFilter === 'medium' && score >= 40 && score < 80)
+        || (riskFilter === 'normal' && score < 40);
+      if (!matchesRisk) return false;
+      if (!q) return true;
+      return [p.work, p.work_id, p.vendor_name, p.ida, p.constituency, p.state, p.mp]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(q);
     });
-  }, [projects, query]);
+  }, [projects, query, riskFilter]);
 
   // Generate mapped markers
   const nearby = useMemo<MapAsset[]>(() => {
@@ -349,7 +355,7 @@ export function CitizenPortal({
                 id="search-constituency-or-work"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search constituency, work, or vendor…"
+                placeholder="Search Work ID, vendor, or district…"
                 className="w-full rounded-lg border border-[#334155] bg-[#0f172a] py-2 pl-8 pr-8 text-xs text-white placeholder-slate-500 outline-none transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
               />
               {query && (
@@ -362,6 +368,17 @@ export function CitizenPortal({
                 </button>
               )}
             </div>
+            <select
+              value={riskFilter}
+              onChange={(event) => setRiskFilter(event.target.value as typeof riskFilter)}
+              aria-label="Filter by risk status"
+              className="rounded-lg border border-[#334155] bg-[#0f172a] px-2.5 py-2 text-[11px] font-bold text-slate-200 outline-none focus:border-indigo-400"
+            >
+              <option value="all">All Risks</option>
+              <option value="high">High Risk Only</option>
+              <option value="medium">Medium Risk</option>
+              <option value="normal">Normal</option>
+            </select>
           </div>
 
           <div className="relative">
@@ -522,7 +539,7 @@ export function CitizenPortal({
         />
       )}
       {qrProject && (
-        <QrModal project={qrProject} onClose={() => setQrProject(null)} />
+        <ProjectQRModal project={qrProject} onClose={() => setQrProject(null)} />
       )}
       {feedbackOpen && (
         <FeedbackModal

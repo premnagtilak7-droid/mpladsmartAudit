@@ -31,6 +31,7 @@ export interface Project {
   sr_no: string | null;
   /** "State" */
   state: string | null;
+  category?: string | null;
   /** "Work" */
   work: string | null;
   /** "Work ID" */

@@ -83,6 +83,7 @@ import {
   type CaseFile,
   type RiskWeights,
 } from '@/components/OperationsModules';
+import { ProjectQRButton, ProjectQRModal } from '@/components/ProjectQRModal';
 import type {
   AnomalyType,
   AuditResponse,
@@ -1044,6 +1045,8 @@ function ProjectTable({
   onInspect: (project: Project) => void;
   onFreeze: (project: Project) => void;
 }) {
+  const [qrProject, setQrProject] = useState<Project | null>(null);
+
   if (loading) {
     return <div className="space-y-3 p-4">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="shimmer h-12 rounded-xl" />)}</div>;
   }
@@ -1089,6 +1092,7 @@ function ProjectTable({
               <td className="px-4 py-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <button onClick={() => onInspect(project)} className="rounded-md border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-200">Inspect</button>
+                  <ProjectQRButton project={project} onOpen={setQrProject} />
                   {!lockedProjects[project.id] && (project.risk_score || 0) >= 80 && (
                     <button onClick={() => onFreeze(project)} className="rounded-md bg-rose-600 px-2 py-1 text-[10px] font-bold text-white shadow-[0_0_12px_rgba(244,63,94,0.22)]">Freeze Disbursement</button>
                   )}
@@ -1098,6 +1102,7 @@ function ProjectTable({
           ))}
         </tbody>
       </table>
+      {qrProject && <ProjectQRModal project={qrProject} onClose={() => setQrProject(null)} />}
     </div>
   );
 }
@@ -1183,6 +1188,7 @@ function AnomalyQueue({
                   <button onClick={() => onFreeze(project)} className="rounded-md bg-rose-600 px-2 py-1 text-[10px] font-bold text-white">Freeze Disbursement</button>
                 )}
                 <button onClick={() => onGenerateMemo(project)} className="rounded-md bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white">Generate DM Memo PDF</button>
+                <ProjectQRButton project={project} onOpen={onInspect} />
                 <button onClick={() => onInspect(project)} className="rounded-md border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-200">Inspect AI Evidence</button>
               </div>
             </div>

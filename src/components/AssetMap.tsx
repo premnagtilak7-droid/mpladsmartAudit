@@ -14,9 +14,11 @@ import {
 import type { LatLngExpression } from 'leaflet';
 import L from 'leaflet';
 import { Fragment, useEffect, useState } from 'react';
+import { QrCode } from 'lucide-react';
 import { formatINR } from '@/lib/format';
 import 'leaflet.heat';
 import type { Project } from '@/lib/types';
+import { ProjectQRModal } from '@/components/ProjectQRModal';
 
 export type MapAsset = Project & { mapLat: number; mapLng: number };
 type MapMode = 'pins' | 'heatmap';
@@ -96,6 +98,7 @@ export default function AssetMap({
   userLocation?: { lat: number; lng: number } | null;
 }) {
   const [browserLocation, setBrowserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [passportProject, setPassportProject] = useState<Project | null>(null);
 
   useEffect(() => {
     if (userLocation || typeof window === 'undefined' || !('geolocation' in navigator)) {
@@ -265,13 +268,22 @@ export default function AssetMap({
                       >
                         {statusLabel}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => onSelect(asset)}
-                        className="rounded-md bg-cyan-600 px-2.5 py-1.5 text-[10px] font-bold text-white transition hover:bg-cyan-500"
-                      >
-                        Inspect Details
-                      </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPassportProject(asset)}
+                            className="inline-flex items-center gap-1 rounded-md border border-cyan-400/30 bg-cyan-500/15 px-2 py-1.5 text-[10px] font-bold text-cyan-100 transition hover:bg-cyan-500/30"
+                          >
+                            <QrCode size={11} /> QR Passport
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onSelect(asset)}
+                            className="rounded-md bg-cyan-600 px-2.5 py-1.5 text-[10px] font-bold text-white transition hover:bg-cyan-500"
+                          >
+                            Inspect Details
+                          </button>
+                        </div>
                     </div>
                   </article>
                 </Popup>
@@ -280,6 +292,7 @@ export default function AssetMap({
           );
         })}
       </MapContainer>
+      {passportProject && <ProjectQRModal project={passportProject} onClose={() => setPassportProject(null)} />}
     </div>
   );
 }

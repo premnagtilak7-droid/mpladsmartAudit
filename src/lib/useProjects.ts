@@ -206,6 +206,7 @@ function normalizeProject(row: SupabaseProjectRow, index: number): Project {
     house: houseValue(row.house ?? row.house_of_parliament ?? row.HOUSE_OF_PARLIAMENT ?? row['House of Parliament']),
     sr_no: textValue(row.sr_no ?? row['Sr. No.']),
     state: textValue(row.state ?? row.State),
+    category: textValue(row.category ?? row.Category),
     work: textValue(row.work ?? row.work_title ?? row.Work ?? row.ACTIVITY_NAME),
     work_id: textValue(row.work_id ?? row['Work ID']),
     ida: textValue(row.ida ?? row.IDA),
