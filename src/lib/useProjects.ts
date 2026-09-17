@@ -83,23 +83,32 @@ async function fetchAllProjects(): Promise<SupabaseProjectRow[]> {
   const allData: SupabaseProjectRow[] = [];
   let page = 0;
   const pageSize = 1000;
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 20_000);
 
-  while (true) {
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .order('risk_score', { ascending: false })
-      .range(page * pageSize, (page + 1) * pageSize - 1);
+  try {
+    while (true) {
+      // Do not order by risk_score here. Older production datasets use the raw
+      // CSV schema and do not have that column, which made the whole request
+      // fail before any rows could render. The UI already sorts normalized rows.
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .range(page * pageSize, (page + 1) * pageSize - 1)
+        .abortSignal(controller.signal);
 
-    if (error) throw error;
-    if (!data || data.length === 0) break;
+      if (error) throw error;
+      if (!data || data.length === 0) break;
 
-    allData.push(...(data as SupabaseProjectRow[]));
-    if (data.length < pageSize) break;
-    page += 1;
+      allData.push(...(data as SupabaseProjectRow[]));
+      if (data.length < pageSize) break;
+      page += 1;
+    }
+
+    return allData;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
-
-  return allData;
 }
 
 function normalizeProject(row: SupabaseProjectRow, index: number): Project {
