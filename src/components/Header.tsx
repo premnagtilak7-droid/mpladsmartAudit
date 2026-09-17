@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -47,7 +48,7 @@ export function Header({
   onPrintDossier,
   projects = [],
 }: HeaderProps) {
-  const { user, loginAs, logoutToCitizen, switchModalOpen, setSwitchModalOpen, restrictedAlert, setRestrictedAlert } = useAuth();
+  const { user, isAuthenticated, loginAs, logoutToCitizen, switchModalOpen, setSwitchModalOpen, restrictedAlert, setRestrictedAlert } = useAuth();
   const { theme, toggle, isMuted, toggleMute } = useTheme();
 
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -215,6 +216,14 @@ export function Header({
             </button>
 
             {/* User Profile Dropdown & Switch Role */}
+            {!isAuthenticated ? (
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-2 rounded-xl border border-blue-400/60 bg-blue-600 px-3 py-2 text-[11px] font-black text-white shadow-lg shadow-blue-950/40 transition hover:bg-blue-500"
+              >
+                <KeyRound size={14} /> OFFICER LOGIN
+              </Link>
+            ) : (
             <div className="relative" ref={dropdownRef}>
               <button
                 type="button"
@@ -316,6 +325,7 @@ export function Header({
                 </div>
               )}
             </div>
+            )}
           </div>
         </div>
       </header>

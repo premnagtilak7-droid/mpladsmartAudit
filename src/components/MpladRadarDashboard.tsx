@@ -125,7 +125,7 @@ export default function MpladRadarDashboard() {
   const { projects, analytics, summary, highRiskCount, riskQueue, loading, error, live, recordCount, reload } = useProjects();
   const { isMuted } = useTheme();
   const { lang: language, setLang, t } = useLang();
-  const { user, isRestrictedForCitizen, setSwitchModalOpen, canAccessAdminOnly } = useAuth();
+  const { user, isRestrictedForCitizen, setRestrictedAlert, setSwitchModalOpen, canAccessOfficerModules, canAccessAdminOnly } = useAuth();
   const [role, setRole] = useState<PortalRole>('central');
   const [verifyId, setVerifyId] = useState('');
   const ui = { workspace: t('workspace'), overview: t('overview'), anomalies: t('anomalies'), intelligence: t('intelligence'), notes: t('notes'), refresh: t('refresh'), import: t('import'), command: t('command') };
@@ -263,7 +263,10 @@ export default function MpladRadarDashboard() {
   };
 
   const freezeProject = (project: Project) => {
-    if (isRestrictedForCitizen('Freeze Disbursement & Officer Lock')) return;
+    if (!canAccessOfficerModules) {
+      setRestrictedAlert('Officer authentication is required for Freeze Disbursement & Officer Lock.');
+      return;
+    }
     const time = new Date().toLocaleString('en-IN');
     setLockedProjects((s) => ({ ...s, [project.id]: time }));
     setAuditLogs((s) => [
@@ -334,7 +337,10 @@ export default function MpladRadarDashboard() {
 
   // --- STEP 3: Run Analysis (live recalculation over Supabase data) -------
   const runAnalysis = () => {
-    if (isRestrictedForCitizen('Model Calibration & Live AI Engine')) return;
+    if (!canAccessAdminOnly) {
+      setRestrictedAlert('Central Vigilance Director access is required for Model Calibration & Live AI Engine.');
+      return;
+    }
     const result = recalibrateScores(projects, riskWeights);
     const highRisk = result.filter((r) => r.calibrated >= 80).length;
     const baselineHigh = result.filter((r) => r.baseline >= 80).length;
@@ -398,7 +404,10 @@ export default function MpladRadarDashboard() {
           if (typeof window !== 'undefined') window.print();
         }}
         onOpenAnalysis={() => {
-          if (isRestrictedForCitizen('Model Calibration & Live AI Engine')) return;
+          if (!canAccessAdminOnly) {
+            setRestrictedAlert('Central Vigilance Director access is required for Model Calibration & Live AI Engine.');
+            return;
+          }
           setActiveTab('overview');
           setOverviewMode('matrix');
         }}
@@ -785,6 +794,7 @@ export default function MpladRadarDashboard() {
             {activeTab === 'ingestion' && (
               <DataIngestionTab
                 canPurge={canAccessAdminOnly}
+                canIngest={canAccessOfficerModules}
                 recordCount={recordCount || projects.length}
                 live={live}
                 onIngested={(summary) => {

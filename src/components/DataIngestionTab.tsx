@@ -46,6 +46,8 @@ const MOSPI_COLUMNS = [
 interface DataIngestionTabProps {
   /** Whether the signed-in officer may run destructive admin actions. */
   canPurge: boolean;
+  /** Officer roles allowed to ingest datasets. */
+  canIngest: boolean;
   /** Live record count shown in the status strip. */
   recordCount: number;
   live: boolean;
@@ -68,6 +70,7 @@ const IDLE_PROGRESS: MospiProgress = {
 
 export function DataIngestionTab({
   canPurge,
+  canIngest,
   recordCount,
   live,
   onIngested,
@@ -176,6 +179,10 @@ export function DataIngestionTab({
 
   const handleIngest = useCallback(async () => {
     if (ingesting) return;
+    if (!canIngest) {
+      setIngestNotice({ kind: 'err', text: 'Officer authentication is required to ingest a dataset.' });
+      return;
+    }
     if (!file) {
       setIngestNotice({ kind: 'err', text: 'Choose an official CSV file before ingesting.' });
       return;
@@ -248,7 +255,7 @@ export function DataIngestionTab({
       setScoring(false);
       setIngesting(false);
     }
-  }, [file, ingesting, isMuted, onIngested, tokenReady]);
+  }, [canIngest, file, ingesting, isMuted, onIngested, tokenReady]);
 
   const progressLabel = useMemo(() => {
     if (progress.phase === 'parsed') return 'Validating & scoring';
@@ -570,7 +577,7 @@ export function DataIngestionTab({
             <button
               type="button"
               onClick={handleIngest}
-              disabled={!file || ingesting || !tokenReady}
+              disabled={!file || ingesting || !tokenReady || !canIngest}
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 px-4 py-3 text-xs font-black uppercase tracking-[0.1em] text-white shadow-lg shadow-cyan-950/50 transition hover:from-cyan-500 hover:to-indigo-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45"
             >
               {ingesting ? (

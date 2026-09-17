@@ -22,6 +22,7 @@ export interface UserProfile {
   department: string;
   badge: string;
   badgeColor: string;
+  token?: string;
 }
 
 export const PRESET_ACCOUNTS: Record<string, UserProfile> = {
@@ -91,6 +92,7 @@ export const PRESET_ACCOUNTS: Record<string, UserProfile> = {
 
 interface AuthContextType {
   user: UserProfile;
+  isAuthenticated: boolean;
   loginAs: (presetKey: keyof typeof PRESET_ACCOUNTS) => void;
   setUserDirect: (profile: UserProfile) => void;
   logoutToCitizen: () => void;
@@ -106,33 +108,37 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'mplad_rakshak_auth_profile';
+const SESSION_TOKEN_KEY = 'mplad_rakshak_session_token';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Default to DPO Varanasi as depicted in the MPLADS RAKSHAK reference screenshot
-  const [user, setUser] = useState<UserProfile>(PRESET_ACCOUNTS.dpo_varanasi);
+  // Start unauthenticated. Officers explicitly select a role from /login.
+  const [user, setUser] = useState<UserProfile>(PRESET_ACCOUNTS.public_citizen);
   const [switchModalOpen, setSwitchModalOpen] = useState(false);
   const [restrictedAlert, setRestrictedAlert] = useState<string | null>(null);
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      const savedToken = sessionStorage.getItem(SESSION_TOKEN_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.role) {
-          setUser(parsed);
+          setUser({ ...parsed, token: savedToken || parsed.token });
         }
       }
     } catch (e) {
-      console.error('Error loading auth from localStorage', e);
+      console.error('Error loading auth from sessionStorage', e);
     }
   }, []);
 
   const loginAs = (presetKey: keyof typeof PRESET_ACCOUNTS) => {
     const selected = PRESET_ACCOUNTS[presetKey];
     if (selected) {
-      setUser(selected);
+      const sessionProfile = { ...selected, token: selected.token || `demo-session-${selected.id}` };
+      setUser(sessionProfile);
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(selected));
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(sessionProfile));
+        sessionStorage.setItem(SESSION_TOKEN_KEY, sessionProfile.token || '');
       } catch (e) {
         console.error(e);
       }
@@ -142,18 +148,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const setUserDirect = (profile: UserProfile) => {
-    setUser(profile);
+    const sessionProfile = { ...profile, token: profile.token || `demo-session-${profile.id}` };
+    setUser(sessionProfile);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(sessionProfile));
+      sessionStorage.setItem(SESSION_TOKEN_KEY, sessionProfile.token || '');
     } catch (e) {
       console.error(e);
     }
   };
 
   const logoutToCitizen = () => {
-    loginAs('public_citizen');
+    setUser(PRESET_ACCOUNTS.public_citizen);
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(SESSION_TOKEN_KEY);
+    } catch (e) {
+      console.error('Error clearing auth session', e);
+    }
   };
 
+  const isAuthenticated = user.role !== 'citizen';
   const canAccessOfficerModules = user.role === 'central_admin' || user.role === 'dpo';
   const canAccessAdminOnly = user.role === 'central_admin';
 
@@ -169,6 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        isAuthenticated,
         loginAs,
         setUserDirect,
         logoutToCitizen,
