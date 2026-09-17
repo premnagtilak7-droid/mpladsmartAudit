@@ -50,13 +50,20 @@ export function useProjects(): ProjectsState {
       }
 
       try {
-        const rows = await fetchAllProjects();
+        let loaded = 0;
+        const total = await fetchAllProjects((batch) => {
+          if (cancelled) return;
+          const normalized = batch.map((row, index) => normalizeProject(row, loaded + index));
+          loaded += normalized.length;
+          setProjects((current) => current.length === 0 ? normalized : [...current, ...normalized]);
+          setRecordCount(loaded);
+          setLive(true);
+          // Render the first page as soon as it arrives. Remaining pages load
+          // in the background so the dashboard is usable immediately.
+          setLoading(false);
+        });
         if (cancelled) return;
-
-        setProjects(rows.map(normalizeProject));
-        setRecordCount(rows.length);
-        setLive(true);
-        setLoading(false);
+        setRecordCount(total);
       } catch (cause) {
         if (cancelled) return;
         setProjects([]);
@@ -77,11 +84,11 @@ export function useProjects(): ProjectsState {
   return { projects, analytics, loading, error, live, recordCount, reload };
 }
 
-async function fetchAllProjects(): Promise<SupabaseProjectRow[]> {
-  if (!supabase) return [];
+async function fetchAllProjects(onPage: (rows: SupabaseProjectRow[]) => void): Promise<number> {
+  if (!supabase) return 0;
 
-  const allData: SupabaseProjectRow[] = [];
   let page = 0;
+  let total = 0;
   const pageSize = 1000;
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), 20_000);
@@ -100,12 +107,14 @@ async function fetchAllProjects(): Promise<SupabaseProjectRow[]> {
       if (error) throw error;
       if (!data || data.length === 0) break;
 
-      allData.push(...(data as SupabaseProjectRow[]));
-      if (data.length < pageSize) break;
+      const rows = data as SupabaseProjectRow[];
+      total += rows.length;
+      onPage(rows);
+      if (rows.length < pageSize) break;
       page += 1;
     }
 
-    return allData;
+    return total;
   } finally {
     window.clearTimeout(timeoutId);
   }
