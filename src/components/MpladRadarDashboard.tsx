@@ -122,7 +122,7 @@ type ModuleId =
   | 'notes';
 
 export default function MpladRadarDashboard() {
-  const { projects, analytics, summary, highRiskCount, loading, error, live, recordCount, reload } = useProjects();
+  const { projects, analytics, summary, highRiskCount, riskQueue, loading, error, live, recordCount, reload } = useProjects();
   const { isMuted } = useTheme();
   const { lang: language, setLang, t } = useLang();
   const { user, isRestrictedForCitizen, setSwitchModalOpen, canAccessAdminOnly } = useAuth();
@@ -241,8 +241,8 @@ export default function MpladRadarDashboard() {
   const pagedProjects = filteredProjects.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const highRiskRows = useMemo(
-    () => scopedProjects.filter((p) => (p.risk_score || 0) >= 80),
-    [scopedProjects],
+    () => riskQueue ?? scopedProjects.filter((p) => (p.risk_score || 0) >= 80),
+    [riskQueue, scopedProjects],
   );
 
   const riskChartData = useMemo(() => {

@@ -18,6 +18,7 @@ import { playIfEnabled } from '@/lib/soundFX';
 import {
   getAdminToken,
   ingestMospiStream,
+  scoreDataset,
   purgeAllDatabase,
   setAdminToken,
   type MospiProgress,
@@ -89,6 +90,7 @@ export function DataIngestionTab({
   const [ingesting, setIngesting] = useState(false);
   const [progress, setProgress] = useState<MospiProgress>(IDLE_PROGRESS);
   const [summary, setSummary] = useState<MospiSummary | null>(null);
+  const [scoring, setScoring] = useState(false);
   const [ingestNotice, setIngestNotice] = useState<Notice>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -210,6 +212,26 @@ export function DataIngestionTab({
       });
 
       if (result.data) onIngested?.(result.data);
+
+      setScoring(true);
+      setProgress((current) => ({
+        ...current,
+        phase: 'batch',
+        percent: 99,
+        message: 'Executing 6-Engine Risk Calculations…',
+      }));
+      const scoringResult = await scoreDataset();
+      if (!scoringResult.ok) {
+        setIngestNotice({ kind: 'err', text: scoringResult.error || 'Dataset scoring failed.' });
+        setProgress((current) => ({ ...current, phase: 'error', message: scoringResult.error || 'Dataset scoring failed.' }));
+        return;
+      }
+      setProgress((current) => ({
+        ...current,
+        phase: 'complete',
+        percent: 100,
+        message: `Risk scoring complete — ${scoringResult.data?.high_risk.toLocaleString('en-IN') || 0} high-risk signals bound.`,
+      }));
     } catch (cause) {
       const message = cause instanceof Error
         ? cause.message
@@ -223,6 +245,7 @@ export function DataIngestionTab({
       }));
       setIngestNotice({ kind: 'err', text: message });
     } finally {
+      setScoring(false);
       setIngesting(false);
     }
   }, [file, ingesting, isMuted, onIngested, tokenReady]);

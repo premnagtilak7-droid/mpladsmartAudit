@@ -95,6 +95,30 @@ export async function ingestDataset(
   }
 }
 
+export interface ScoreDatasetSummary {
+  projects_scanned: number;
+  projects_updated: number;
+  high_risk: number;
+  anomaly_signals_written: number;
+}
+
+/** Recomputes risk scores for the complete Supabase dataset. */
+export async function scoreDataset(): Promise<ApiResult<ScoreDatasetSummary>> {
+  try {
+    const res = await fetch('/api/score-dataset', {
+      method: 'POST',
+      headers: { 'x-admin-token': getAdminToken() },
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json?.ok === false) {
+      return { ok: false, status: res.status, error: json?.error || `Scoring failed (HTTP ${res.status}).`, data: json };
+    }
+    return { ok: true, status: res.status, data: json as ScoreDatasetSummary };
+  } catch (err) {
+    return { ok: false, status: 0, error: err instanceof Error ? err.message : 'Network error during scoring.' };
+  }
+}
+
 export interface PurgeSummary {
   strategy: string;
   statement: string;

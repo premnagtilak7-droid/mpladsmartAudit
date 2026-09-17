@@ -21,6 +21,7 @@ export interface ProjectsState {
   analytics: Analytics;
   summary: MospiSummary | null;
   highRiskCount: number | null;
+  riskQueue: Project[] | null;
   loading: boolean;
   error: string | null;
   live: boolean;
@@ -39,6 +40,7 @@ export function useProjects(): ProjectsState {
   const [projects, setProjects] = useState<Project[]>([]);
   const [summary, setSummary] = useState<MospiSummary | null>(null);
   const [highRiskCount, setHighRiskCount] = useState<number | null>(null);
+  const [riskQueue, setRiskQueue] = useState<Project[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState(false);
@@ -60,6 +62,7 @@ export function useProjects(): ProjectsState {
           setProjects([]);
           setSummary(null);
           setHighRiskCount(null);
+          setRiskQueue(null);
           setRecordCount(0);
           setError('NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured.');
           setLoading(false);
@@ -82,6 +85,13 @@ export function useProjects(): ProjectsState {
           .catch(() => {
             // Risk KPI remains pending rather than blocking the dashboard.
           });
+        fetchRiskQueue()
+          .then((rows) => {
+            if (!cancelled) setRiskQueue(rows.map(normalizeProject));
+          })
+          .catch(() => {
+            // The dashboard can fall back to the visible page if this query fails.
+          });
         let loaded = 0;
         const total = await fetchAllProjects((batch) => {
           if (cancelled) return;
@@ -101,6 +111,7 @@ export function useProjects(): ProjectsState {
         setProjects([]);
         setSummary(null);
         setHighRiskCount(null);
+        setRiskQueue(null);
         setRecordCount(0);
         setLive(false);
         setError(cause instanceof Error ? cause.message : 'Unable to query Supabase projects.');
@@ -115,7 +126,19 @@ export function useProjects(): ProjectsState {
   }, [tick]);
 
   const analytics = useMemo(() => computeLiveAnalytics(projects), [projects]);
-  return { projects, analytics, summary, highRiskCount, loading, error, live, recordCount, reload };
+  return { projects, analytics, summary, highRiskCount, riskQueue, loading, error, live, recordCount, reload };
+}
+
+async function fetchRiskQueue(): Promise<SupabaseProjectRow[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .gte('risk_score', 80)
+    .order('risk_score', { ascending: false })
+    .range(0, 49);
+  if (error) throw error;
+  return (data || []) as SupabaseProjectRow[];
 }
 
 async function fetchHighRiskCount(): Promise<number> {
