@@ -80,8 +80,8 @@ export function useProjects(): ProjectsState {
           setProjects((current) => current.length === 0 ? normalized : [...current, ...normalized]);
           setRecordCount(loaded);
           setLive(true);
-          // Render the first page as soon as it arrives. Remaining pages load
-          // in the background so the dashboard is usable immediately.
+          // Render the first page immediately. The exact total comes from
+          // Supabase count metadata, so no full-table download is required.
           setLoading(false);
         });
         if (cancelled) return;
@@ -129,34 +129,24 @@ async function fetchMospiSummary(): Promise<MospiSummary | null> {
 async function fetchAllProjects(onPage: (rows: SupabaseProjectRow[]) => void): Promise<number> {
   if (!supabase) return 0;
 
-  let page = 0;
-  let total = 0;
   const pageSize = 1000;
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), 20_000);
+  const timeoutId = window.setTimeout(() => controller.abort(), 10_000);
 
   try {
-    while (true) {
-      // Do not order by risk_score here. Older production datasets use the raw
-      // CSV schema and do not have that column, which made the whole request
-      // fail before any rows could render. The UI already sorts normalized rows.
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .range(page * pageSize, (page + 1) * pageSize - 1)
-        .abortSignal(controller.signal);
+    // Load only the first page. The exact total is returned by PostgREST count
+    // metadata, while the summary RPC handles all-record aggregates. This keeps
+    // the initial dashboard response small even with 118,018 projects.
+    const { data, error, count } = await supabase
+      .from('projects')
+      .select('*', { count: 'exact' })
+      .range(0, pageSize - 1)
+      .abortSignal(controller.signal);
 
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-
-      const rows = data as SupabaseProjectRow[];
-      total += rows.length;
-      onPage(rows);
-      if (rows.length < pageSize) break;
-      page += 1;
-    }
-
-    return total;
+    if (error) throw error;
+    const rows = (data || []) as SupabaseProjectRow[];
+    if (rows.length > 0) onPage(rows);
+    return count ?? rows.length;
   } finally {
     window.clearTimeout(timeoutId);
   }
