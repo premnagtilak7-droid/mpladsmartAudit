@@ -122,7 +122,7 @@ type ModuleId =
   | 'notes';
 
 export default function MpladRadarDashboard() {
-  const { projects, analytics, summary, loading, error, live, recordCount, reload } = useProjects();
+  const { projects, analytics, summary, highRiskCount, loading, error, live, recordCount, reload } = useProjects();
   const { isMuted } = useTheme();
   const { lang: language, setLang, t } = useLang();
   const { user, isRestrictedForCitizen, setSwitchModalOpen, canAccessAdminOnly } = useAuth();
@@ -568,6 +568,7 @@ export default function MpladRadarDashboard() {
                 <ExecutiveCommandHub
                   projects={scopedProjects}
                   summary={summary}
+                  highRiskCount={highRiskCount}
                   totalRecords={recordCount}
                   onInspectWork={inspectProject}
                   onExploreEngine={exploreEngine}
@@ -692,6 +693,7 @@ export default function MpladRadarDashboard() {
                 <ExecutiveCommandHub
                   projects={scopedProjects}
                   summary={summary}
+                  highRiskCount={highRiskCount}
                   totalRecords={recordCount}
                   onInspectWork={setSelected}
                   onExploreEngine={exploreEngine}

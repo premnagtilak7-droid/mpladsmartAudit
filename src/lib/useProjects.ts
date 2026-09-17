@@ -20,6 +20,7 @@ export interface ProjectsState {
   projects: Project[];
   analytics: Analytics;
   summary: MospiSummary | null;
+  highRiskCount: number | null;
   loading: boolean;
   error: string | null;
   live: boolean;
@@ -37,6 +38,7 @@ type SupabaseProjectRow = Record<string, unknown>;
 export function useProjects(): ProjectsState {
   const [projects, setProjects] = useState<Project[]>([]);
   const [summary, setSummary] = useState<MospiSummary | null>(null);
+  const [highRiskCount, setHighRiskCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState(false);
@@ -57,6 +59,7 @@ export function useProjects(): ProjectsState {
         if (!cancelled) {
           setProjects([]);
           setSummary(null);
+          setHighRiskCount(null);
           setRecordCount(0);
           setError('NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured.');
           setLoading(false);
@@ -71,6 +74,13 @@ export function useProjects(): ProjectsState {
           })
           .catch(() => {
             // Keep the project table usable if the RPC has not been deployed yet.
+          });
+        fetchHighRiskCount()
+          .then((count) => {
+            if (!cancelled) setHighRiskCount(count);
+          })
+          .catch(() => {
+            // Risk KPI remains pending rather than blocking the dashboard.
           });
         let loaded = 0;
         const total = await fetchAllProjects((batch) => {
@@ -90,6 +100,7 @@ export function useProjects(): ProjectsState {
         if (cancelled) return;
         setProjects([]);
         setSummary(null);
+        setHighRiskCount(null);
         setRecordCount(0);
         setLive(false);
         setError(cause instanceof Error ? cause.message : 'Unable to query Supabase projects.');
@@ -104,7 +115,17 @@ export function useProjects(): ProjectsState {
   }, [tick]);
 
   const analytics = useMemo(() => computeLiveAnalytics(projects), [projects]);
-  return { projects, analytics, summary, loading, error, live, recordCount, reload };
+  return { projects, analytics, summary, highRiskCount, loading, error, live, recordCount, reload };
+}
+
+async function fetchHighRiskCount(): Promise<number> {
+  if (!supabase) return 0;
+  const { count, error } = await supabase
+    .from('projects')
+    .select('id', { count: 'exact', head: true })
+    .gte('risk_score', 80);
+  if (error) throw error;
+  return count ?? 0;
 }
 
 async function fetchMospiSummary(): Promise<MospiSummary | null> {

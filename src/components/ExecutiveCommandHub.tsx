@@ -49,6 +49,7 @@ import ScrollReveal from '@/components/ui/ScrollReveal';
 interface ExecutiveCommandHubProps {
   projects: Project[];
   summary?: MospiSummary | null;
+  highRiskCount?: number | null;
   totalRecords?: number;
   onInspectWork?: (project: Project) => void;
   onExploreEngine?: (engineId: string) => void;
@@ -58,6 +59,7 @@ interface ExecutiveCommandHubProps {
 export function ExecutiveCommandHub({
   projects,
   summary,
+  highRiskCount,
   totalRecords,
   onInspectWork,
   onExploreEngine,
@@ -71,7 +73,7 @@ export function ExecutiveCommandHub({
     // an officer imports a local CSV. Once records exist, every number switches
     // to the live dataset instead of silently mixing the two sources.
     const totalProjects = totalRecords ?? projects.length;
-    const flagged = projects.filter(
+    const flagged = highRiskCount ?? projects.filter(
       (p) => (p.risk_score || 0) >= 80 || p.anomaly_type === 'Duplicate Location',
     ).length;
     const totalSanctionedValue = summary?.works_sanctioned_amount ?? projects.reduce(
@@ -89,7 +91,7 @@ export function ExecutiveCommandHub({
       openInquiries,
       sanctionedCrores: (totalSanctionedValue / 10_000_000).toFixed(2),
     };
-  }, [projects, summary, totalRecords]);
+  }, [projects, summary, highRiskCount, totalRecords]);
 
   return (
     <div className="space-y-6">
@@ -156,7 +158,7 @@ export function ExecutiveCommandHub({
               <AnimatedCounter value={kpiData.totalProjects} />
             </div>
             <div className="mt-1 text-[11px] text-slate-400">
-              Live Supabase coverage
+              Full MoSPI Database Coverage ({kpiData.totalProjects.toLocaleString('en-IN')} Records)
             </div>
           </div>
 
