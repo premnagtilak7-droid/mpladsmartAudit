@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 
 interface AnimatedCounterProps {
   value: number | string;
@@ -9,6 +9,7 @@ interface AnimatedCounterProps {
   suffix?: string;
   decimals?: 0 | 2;
   className?: string;
+  style?: CSSProperties;
 }
 
 export default function AnimatedCounter({
@@ -18,6 +19,7 @@ export default function AnimatedCounter({
   suffix = '',
   decimals = 0,
   className,
+  style,
 }: AnimatedCounterProps) {
   const [count, setCount] = useState(0);
 
@@ -41,5 +43,5 @@ export default function AnimatedCounter({
     maximumFractionDigits: decimals,
   });
 
-  return <span className={className}>{prefix}{formatted}{suffix}</span>;
+  return <span className={className} style={style}>{prefix}{formatted}{suffix}</span>;
 }

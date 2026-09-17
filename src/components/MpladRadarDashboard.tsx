@@ -1000,7 +1000,7 @@ function MospiKpiGrid({ loading, projects, summary, recordCount }: { loading: bo
               <div
                 className="text-lg font-black text-slate-900 dark:text-slate-100"
                 style={{ color: ['rgb(34, 57, 225)', 'rgb(7, 3, 4)', 'rgb(215, 181, 42)', 'rgb(215, 94, 42)', 'rgb(42, 215, 201)', 'rgb(129, 215, 42)'][cards.indexOf(card)] }}
-              >{card.count == null ? <AnimatedCounter value={card.value / 10_000_000} prefix="₹" suffix=" Cr" decimals={2} /> : <><AnimatedCounter value={card.count} /> {card.countLabel}</>}</div>
+              >{card.count == null ? <AnimatedCounter value={card.value / 10_000_000} prefix="₹" suffix=" Cr" decimals={2} style={cards.indexOf(card) === 0 ? { color: 'rgb(160, 238, 17)' } : undefined} /> : <><AnimatedCounter value={card.count} /> {card.countLabel}</>}</div>
               {card.count != null && <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">₹{formatCrores(card.value)}</div>}
             </>
           )}
