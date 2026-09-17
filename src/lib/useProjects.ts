@@ -30,13 +30,20 @@ export interface ProjectsState {
 }
 
 type SupabaseProjectRow = Record<string, unknown>;
+export type HouseFilter = 'LOK_SABHA' | 'RAJYA_SABHA' | 'ALL';
+
+function housePattern(houseFilter: HouseFilter): string | null {
+  if (houseFilter === 'LOK_SABHA') return 'Lok Sabha';
+  if (houseFilter === 'RAJYA_SABHA') return 'Rajya Sabha';
+  return null;
+}
 
 /**
  * Loads the live projects table. There is deliberately no mock fallback here:
  * the dashboard must reflect the Supabase dataset and surface connection/query
  * errors instead of presenting simulated records as live data.
  */
-export function useProjects(): ProjectsState {
+export function useProjects(houseFilter: HouseFilter = 'ALL'): ProjectsState {
   const [projects, setProjects] = useState<Project[]>([]);
   const [summary, setSummary] = useState<MospiSummary | null>(null);
   const [highRiskCount, setHighRiskCount] = useState<number | null>(null);
@@ -71,21 +78,21 @@ export function useProjects(): ProjectsState {
       }
 
       try {
-        fetchMospiSummary()
+        fetchMospiSummary(houseFilter)
           .then((liveSummary) => {
             if (!cancelled && liveSummary) setSummary(liveSummary);
           })
           .catch(() => {
             // Keep the project table usable if the RPC has not been deployed yet.
           });
-        fetchHighRiskCount()
+        fetchHighRiskCount(houseFilter)
           .then((count) => {
             if (!cancelled) setHighRiskCount(count);
           })
           .catch(() => {
             // Risk KPI remains pending rather than blocking the dashboard.
           });
-        fetchRiskQueue()
+        fetchRiskQueue(houseFilter)
           .then((rows) => {
             if (!cancelled) setRiskQueue(rows.map(normalizeProject));
           })
@@ -93,7 +100,7 @@ export function useProjects(): ProjectsState {
             // The dashboard can fall back to the visible page if this query fails.
           });
         let loaded = 0;
-        const total = await fetchAllProjects((batch) => {
+        const total = await fetchAllProjects(houseFilter, (batch) => {
           if (cancelled) return;
           const normalized = batch.map((row, index) => normalizeProject(row, loaded + index));
           loaded += normalized.length;
@@ -123,37 +130,44 @@ export function useProjects(): ProjectsState {
     return () => {
       cancelled = true;
     };
-  }, [tick]);
+  }, [tick, houseFilter]);
 
   const analytics = useMemo(() => computeLiveAnalytics(projects), [projects]);
   return { projects, analytics, summary, highRiskCount, riskQueue, loading, error, live, recordCount, reload };
 }
 
-async function fetchRiskQueue(): Promise<SupabaseProjectRow[]> {
+async function fetchRiskQueue(houseFilter: HouseFilter): Promise<SupabaseProjectRow[]> {
   if (!supabase) return [];
-  const { data, error } = await supabase
+  let query = supabase
     .from('projects')
     .select('*')
-    .gte('risk_score', 80)
+    .gte('risk_score', 80);
+  const pattern = housePattern(houseFilter);
+  if (pattern) query = query.ilike('house', `%${pattern}%`);
+  const { data, error } = await query
+    .order('risk_score', { ascending: false })
     .order('risk_score', { ascending: false })
     .range(0, 49);
   if (error) throw error;
   return (data || []) as SupabaseProjectRow[];
 }
 
-async function fetchHighRiskCount(): Promise<number> {
+async function fetchHighRiskCount(houseFilter: HouseFilter): Promise<number> {
   if (!supabase) return 0;
-  const { count, error } = await supabase
+  let query = supabase
     .from('projects')
     .select('id', { count: 'exact', head: true })
     .gte('risk_score', 80);
+  const pattern = housePattern(houseFilter);
+  if (pattern) query = query.ilike('house', `%${pattern}%`);
+  const { count, error } = await query;
   if (error) throw error;
   return count ?? 0;
 }
 
-async function fetchMospiSummary(): Promise<MospiSummary | null> {
+async function fetchMospiSummary(houseFilter: HouseFilter): Promise<MospiSummary | null> {
   if (!supabase) return null;
-  const { data, error } = await supabase.rpc('get_esakshi_summary', { house_filter: 'ALL' });
+  const { data, error } = await supabase.rpc('get_esakshi_summary', { house_filter: houseFilter });
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) return null;
@@ -170,7 +184,7 @@ async function fetchMospiSummary(): Promise<MospiSummary | null> {
   };
 }
 
-async function fetchAllProjects(onPage: (rows: SupabaseProjectRow[]) => void): Promise<number> {
+async function fetchAllProjects(houseFilter: HouseFilter, onPage: (rows: SupabaseProjectRow[]) => void): Promise<number> {
   if (!supabase) return 0;
 
   const pageSize = 1000;
@@ -181,9 +195,12 @@ async function fetchAllProjects(onPage: (rows: SupabaseProjectRow[]) => void): P
     // Load only the first page. The exact total is returned by PostgREST count
     // metadata, while the summary RPC handles all-record aggregates. This keeps
     // the initial dashboard response small even with 118,018 projects.
-    const { data, error, count } = await supabase
+    let query = supabase
       .from('projects')
-      .select('*', { count: 'exact' })
+      .select('*', { count: 'exact' });
+    const pattern = housePattern(houseFilter);
+    if (pattern) query = query.ilike('house', `%${pattern}%`);
+    const { data, error, count } = await query
       .range(0, pageSize - 1)
       .abortSignal(controller.signal);
 

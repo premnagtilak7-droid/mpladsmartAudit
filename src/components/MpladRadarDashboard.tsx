@@ -57,7 +57,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useProjects, type MospiSummary } from '@/lib/useProjects';
+import { useProjects, type HouseFilter, type MospiSummary } from '@/lib/useProjects';
 import { useTheme } from '@/components/ThemeProvider';
 import { playIfEnabled } from '@/lib/soundFX';
 import AnimatedCounter from '@/components/ui/AnimatedCounter';
@@ -123,7 +123,8 @@ type ModuleId =
   | 'notes';
 
 export default function MpladRadarDashboard() {
-  const { projects, analytics, summary, highRiskCount, riskQueue, loading, error, live, recordCount, reload } = useProjects();
+  const [activeHouse, setActiveHouse] = useState<HouseFilter>('ALL');
+  const { projects, analytics, summary, highRiskCount, riskQueue, loading, error, live, recordCount, reload } = useProjects(activeHouse);
   const { isMuted } = useTheme();
   const { lang: language, setLang, t } = useLang();
   const { user, isRestrictedForCitizen, setRestrictedAlert, setSwitchModalOpen, canAccessOfficerModules, canAccessAdminOnly } = useAuth();
@@ -237,6 +238,10 @@ export default function MpladRadarDashboard() {
   useEffect(() => {
     setPage(1);
   }, [query, houseFilter, stateFilter, constituencyFilter, anomalyFilter, sortDesc]);
+
+  useEffect(() => {
+    setHouseFilter(activeHouse === 'ALL' ? 'All Houses' : activeHouse === 'LOK_SABHA' ? 'Lok Sabha' : 'Rajya Sabha');
+  }, [activeHouse]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProjects.length / PAGE_SIZE));
   const pagedProjects = filteredProjects.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -575,6 +580,7 @@ export default function MpladRadarDashboard() {
               >
             {activeTab === 'overview' && (
               <section className="space-y-6">
+                <HouseSelector activeHouse={activeHouse} onChange={setActiveHouse} />
                 <ExecutiveCommandHub
                   projects={scopedProjects}
                   summary={summary}
@@ -933,6 +939,34 @@ function RiskTooltip({ active, payload }: { active?: boolean; payload?: Array<{ 
   if (!active || !payload?.[0]?.payload) return null;
   const item = payload[0].payload;
   return <div className="rounded-lg border border-[#334155] bg-[#0f172a] px-3 py-2 text-[11px] text-slate-100 shadow-xl"><div className="font-bold" style={{ color: item.fill }}>{item.name}</div><div>{item.value.toLocaleString('en-IN')} records</div><div className="text-slate-400">{item.percent.toFixed(2)}% of total</div></div>;
+}
+
+function HouseSelector({ activeHouse, onChange }: { activeHouse: HouseFilter; onChange: (house: HouseFilter) => void }) {
+  const options: Array<{ value: HouseFilter; label: string; count: string }> = [
+    { value: 'LOK_SABHA', label: 'Lok Sabha', count: '543 MPs' },
+    { value: 'RAJYA_SABHA', label: 'Rajya Sabha', count: '245 MPs' },
+    { value: 'ALL', label: 'All Houses', count: '788 MPs' },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-400/20 bg-[#0f172a]/85 p-2 shadow-lg shadow-cyan-950/10">
+      <div className="px-3 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">e-SAKSHI House Scope</div>
+      <div className="flex flex-1 flex-wrap gap-2 sm:justify-end">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black transition ${activeHouse === option.value ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-950/40' : 'border border-slate-700 bg-[#0b132b] text-slate-300 hover:border-cyan-400/50 hover:text-white'}`}
+          >
+            <Building2 size={14} />
+            <span>{option.label}</span>
+            <span className="text-[10px] opacity-70">({option.count})</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function MospiKpiGrid({ loading, projects, summary, recordCount }: { loading: boolean; projects: Project[]; summary: MospiSummary | null; recordCount: number }) {
