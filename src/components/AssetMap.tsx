@@ -13,7 +13,7 @@ import {
 } from 'react-leaflet';
 import type { LatLngExpression } from 'leaflet';
 import L from 'leaflet';
-import { Fragment, useEffect } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { formatINR } from '@/lib/format';
 import 'leaflet.heat';
 import type { Project } from '@/lib/types';
@@ -95,9 +95,35 @@ export default function AssetMap({
   mode?: MapMode;
   userLocation?: { lat: number; lng: number } | null;
 }) {
-  const center: LatLngExpression = userLocation
-    ? [userLocation.lat, userLocation.lng]
-    : [20.5937, 78.9629];
+  const [browserLocation, setBrowserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    if (userLocation || typeof window === 'undefined' || !('geolocation' in navigator)) {
+      if (!userLocation && typeof window !== 'undefined') {
+        setBrowserLocation({ lat: 18.5912, lng: 73.7389 });
+      }
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setBrowserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      (error) => {
+        console.warn('Geolocation denied, falling back to Pune/MH:', error.message);
+        setBrowserLocation({ lat: 18.5912, lng: 73.7389 });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+    );
+  }, [userLocation]);
+
+  const effectiveLocation = userLocation ?? browserLocation;
+  const center: LatLngExpression = effectiveLocation
+    ? [effectiveLocation.lat, effectiveLocation.lng]
+    : [18.5912, 73.7389];
   const cartoKey = process.env.NEXT_PUBLIC_CARTO_API_KEY || 'cb1_3h01_1_8b1ab8cc98b1a6acf0813486';
   const cartoAttribution = '&copy; OpenStreetMap &copy; CARTO';
 
@@ -108,7 +134,7 @@ export default function AssetMap({
     >
       <MapContainer
         center={center}
-        zoom={userLocation ? 13 : 5}
+        zoom={effectiveLocation ? 13 : 5}
         minZoom={3}
         maxZoom={18}
         scrollWheelZoom={true}
@@ -120,7 +146,7 @@ export default function AssetMap({
         className="h-full w-full"
       >
         <MapSizeFix />
-        <SetBounds markers={assets} userLocation={userLocation} />
+        <SetBounds markers={assets} userLocation={effectiveLocation} />
         <LayersControl position="topright">
           <LayersControl.BaseLayer checked name="Dark Command">
             <TileLayer
@@ -149,8 +175,8 @@ export default function AssetMap({
         </LayersControl>
 
         {/* Pulsing "You Are Here" user badge if geolocated */}
-        {userLocation && userLocationIcon && (
-          <Marker position={[userLocation.lat, userLocation.lng]} icon={userLocationIcon}>
+        {effectiveLocation && userLocationIcon && (
+          <Marker position={[effectiveLocation.lat, effectiveLocation.lng]} icon={userLocationIcon}>
             <Tooltip direction="top" permanent offset={[0, -18]}>
               <span className="font-bold text-xs text-blue-400">You Are Here</span>
             </Tooltip>
@@ -159,7 +185,7 @@ export default function AssetMap({
                 Current Browser Geolocation
                 <br />
                 <span className="text-[10px] text-slate-400 font-mono">
-                  {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
+                  {effectiveLocation.lat.toFixed(4)}, {effectiveLocation.lng.toFixed(4)}
                 </span>
               </div>
             </Popup>
