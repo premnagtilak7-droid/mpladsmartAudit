@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { LangProvider } from '@/lib/i18n/LangContext';
-import { AuthProvider } from '@/lib/AuthContext';
+import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata: Metadata = {
   title: 'MPLADS RAKSHAK | National Risk & Anomaly Intelligence Layer • MoSPI',

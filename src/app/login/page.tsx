@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth, PRESET_ACCOUNTS, type UserRole } from '@/lib/AuthContext';
+import { useState } from 'react';
+import { useAuth, PRESET_ACCOUNTS } from '@/lib/AuthContext';
 import { ArrowLeft, Building2, CheckCircle2, Landmark, LockKeyhole, ShieldCheck, Users } from 'lucide-react';
 
 const profiles: Array<{
@@ -16,12 +17,6 @@ const profiles: Array<{
     icon: ShieldCheck,
     accent: 'border-emerald-400/50 bg-emerald-400/10 text-emerald-200 hover:bg-emerald-400/20',
     description: 'National scrutiny, model calibration, ingestion, and database administration.',
-  },
-  {
-    key: 'dpo_varanasi',
-    icon: Building2,
-    accent: 'border-cyan-400/50 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/20',
-    description: 'District operations, field verification, and Varanasi workspaces.',
   },
   {
     key: 'dpo_pune',
@@ -45,7 +40,20 @@ const profiles: Array<{
 
 export default function LoginPage() {
   const router = useRouter();
-  const { loginAs } = useAuth();
+  const { login, loginAs } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSignIn = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const authenticated = login(email, password);
+    if (!authenticated) {
+      setError('Use an authorised profile email or select a Quick Role Authentication card.');
+      return;
+    }
+    router.push('/');
+  };
 
   const selectProfile = (key: keyof typeof PRESET_ACCOUNTS) => {
     loginAs(key);
@@ -79,8 +87,17 @@ export default function LoginPage() {
               <header className="mb-7">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Choose an authorised profile</p>
                 <h2 className="mt-2 text-2xl font-black tracking-tight text-white">Sign in to your workspace</h2>
-                <p className="mt-2 text-sm text-slate-400">Select the role profile issued for this demonstration environment.</p>
+                <p className="mt-2 text-sm text-slate-400">Use your institutional credentials or select a quick role for this demonstration environment.</p>
               </header>
+              <form onSubmit={handleSignIn} className="mb-7 space-y-3 rounded-2xl border border-slate-700/70 bg-[#081124] p-4">
+                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Official email</label>
+                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="officer@mospi.gov.in" className="w-full rounded-lg border border-slate-700 bg-[#0f172a] px-3 py-2.5 text-sm text-white outline-none focus:border-blue-400" />
+                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Password</label>
+                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter password" className="w-full rounded-lg border border-slate-700 bg-[#0f172a] px-3 py-2.5 text-sm text-white outline-none focus:border-blue-400" />
+                {error && <p className="text-xs font-semibold text-rose-300">{error}</p>}
+                <button type="submit" className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-black text-white transition hover:bg-blue-500">Sign In</button>
+              </form>
+              <p className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Quick Role Authentication</p>
               <div className="grid gap-3">
                 {profiles.map(({ key, icon: Icon, accent, description }) => {
                   const profile = PRESET_ACCOUNTS[key];

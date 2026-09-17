@@ -93,6 +93,7 @@ export const PRESET_ACCOUNTS: Record<string, UserProfile> = {
 interface AuthContextType {
   user: UserProfile;
   isAuthenticated: boolean;
+  login: (email: string, password: string) => boolean;
   loginAs: (presetKey: keyof typeof PRESET_ACCOUNTS) => void;
   setUserDirect: (profile: UserProfile) => void;
   logoutToCitizen: () => void;
@@ -158,6 +159,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const login = (email: string, password: string): boolean => {
+    if (!email.trim() || !password.trim()) return false;
+    const match = Object.entries(PRESET_ACCOUNTS).find(([, profile]) => profile.email.toLowerCase() === email.trim().toLowerCase());
+    if (!match) return false;
+    setUserDirect(match[1]);
+    return true;
+  };
+
   const logoutToCitizen = () => {
     setUser(PRESET_ACCOUNTS.public_citizen);
     try {
@@ -185,6 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         isAuthenticated,
+        login,
         loginAs,
         setUserDirect,
         logoutToCitizen,

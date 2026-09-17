@@ -27,6 +27,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { useAuth, PRESET_ACCOUNTS, type UserRole } from '@/lib/AuthContext';
+import { AuthModal } from '@/components/AuthModal';
 import { useTheme } from '@/components/ThemeProvider';
 import { playIfEnabled } from '@/lib/soundFX';
 import type { Project } from '@/lib/types';
@@ -569,47 +570,7 @@ export function Header({
         </div>
       )}
 
-      {/* 3. Restricted Access Guard Notice for Public Citizen */}
-      {restrictedAlert && (
-        <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 backdrop-blur-sm"
-          onClick={() => setRestrictedAlert(null)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-2xl border border-rose-500/50 bg-[#0f172a] p-6 text-center shadow-2xl"
-          >
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
-              <ShieldAlert size={26} />
-            </div>
-            <h3 className="text-base font-black text-white">
-              Access Restricted: Officer Credentials Required
-            </h3>
-            <p className="mt-2 text-xs text-slate-300 leading-relaxed">
-              {restrictedAlert}
-            </p>
-            <div className="mt-5 flex justify-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setRestrictedAlert(null);
-                  setSwitchModalOpen(true);
-                }}
-                className="rounded-lg bg-cyan-600 px-4 py-2 text-xs font-bold text-white hover:bg-cyan-500 transition"
-              >
-                Authenticate as Officer
-              </button>
-              <button
-                type="button"
-                onClick={() => setRestrictedAlert(null)}
-                className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AuthModal open={Boolean(restrictedAlert)} message={restrictedAlert || undefined} onClose={() => setRestrictedAlert(null)} />
     </>
   );
 }
