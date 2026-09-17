@@ -567,13 +567,15 @@ export default function MpladRadarDashboard() {
               <section className="space-y-6">
                 <ExecutiveCommandHub
                   projects={scopedProjects}
+                  summary={summary}
+                  totalRecords={recordCount}
                   onInspectWork={inspectProject}
                   onExploreEngine={exploreEngine}
                   onOpenScrutinyQueue={() => setActiveTab('anomalies')}
                 />
 
                 <OperationalWorkflowHub
-                  totalRecords={projects.length}
+                  totalRecords={recordCount || projects.length}
                   highRiskRecords={highRiskRows.length}
                   flagshipProject={scopedProjects.find(p => (p.risk_score || 0) >= 80) || scopedProjects[0]}
                   onInspectFlagship={() => {
@@ -599,7 +601,7 @@ export default function MpladRadarDashboard() {
                   }}
                 />
 
-                <MospiKpiGrid loading={loading} projects={projects} summary={summary} />
+                <MospiKpiGrid loading={loading} projects={projects} summary={summary} recordCount={recordCount} />
                 <div className="mb-0 rounded-xl border border-cyan-400/25 bg-gradient-to-r from-indigo-500/15 via-blue-500/10 to-emerald-500/10 px-4 py-3 text-sm font-black text-slate-100 shadow-[0_0_28px_rgba(34,211,238,0.08)]">
                   Active AI Vigilance Batch: {recordCount.toLocaleString('en-IN')} Ingested Works <span className="mx-1 text-slate-500">|</span> Total Disbursed: ₹{formatCrores(analytics.totalFunds)} <span className="mx-1 text-slate-500">|</span> <span className="text-rose-300">{analytics.flaggedHighRisk.toLocaleString('en-IN')} High Risk Fraud Cases</span>
                 </div>
@@ -689,6 +691,8 @@ export default function MpladRadarDashboard() {
               <section className="space-y-6">
                 <ExecutiveCommandHub
                   projects={scopedProjects}
+                  summary={summary}
+                  totalRecords={recordCount}
                   onInspectWork={setSelected}
                   onExploreEngine={exploreEngine}
                   onOpenScrutinyQueue={() => setActiveTab('anomalies')}
@@ -918,14 +922,14 @@ function RiskTooltip({ active, payload }: { active?: boolean; payload?: Array<{ 
   return <div className="rounded-lg border border-[#334155] bg-[#0f172a] px-3 py-2 text-[11px] text-slate-100 shadow-xl"><div className="font-bold" style={{ color: item.fill }}>{item.name}</div><div>{item.value.toLocaleString('en-IN')} records</div><div className="text-slate-400">{item.percent.toFixed(2)}% of total</div></div>;
 }
 
-function MospiKpiGrid({ loading, projects, summary }: { loading: boolean; projects: Project[]; summary: MospiSummary | null }) {
+function MospiKpiGrid({ loading, projects, summary, recordCount }: { loading: boolean; projects: Project[]; summary: MospiSummary | null; recordCount: number }) {
   const cards = useMemo(() => {
     const totalAllocated = projects.reduce((sum, p) => sum + (Number(p.allocated_amount) || 0), 0);
     const totalSanctioned = projects.reduce((sum, p) => sum + (Number(p.sanctioned_amount) || 0), 0);
     const totalExpenditure = projects.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
     const sanctionedWorks = projects.filter((p) => (Number(p.sanctioned_amount) || 0) > 0).length;
     const completedWorks = projects.filter((p) => (Number(p.completion_percent) || 0) >= 100).length;
-    const recommendedWorks = projects.length;
+    const recommendedWorks = recordCount || projects.length;
 
     return [
       { label: "Allocated Limit for Hon'ble MPs", count: null, value: summary?.allocated_limit ?? totalAllocated, countLabel: '' },
@@ -935,7 +939,7 @@ function MospiKpiGrid({ loading, projects, summary }: { loading: boolean; projec
       { label: 'Works Completed', count: summary?.works_completed_count ?? completedWorks, value: summary?.works_completed_amount ?? totalExpenditure, countLabel: 'works' },
       { label: 'Scheme Expenditure', count: null, value: summary?.total_expenditure ?? totalExpenditure, countLabel: '' },
     ];
-  }, [projects, summary]);
+  }, [projects, summary, recordCount]);
 
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">

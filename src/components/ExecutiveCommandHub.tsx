@@ -41,12 +41,15 @@ import {
   Zap,
 } from 'lucide-react';
 import type { Project } from '@/lib/types';
+import type { MospiSummary } from '@/lib/useProjects';
 import { formatCrores, formatINR } from '@/lib/format';
 import AnimatedCounter from '@/components/ui/AnimatedCounter';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 
 interface ExecutiveCommandHubProps {
   projects: Project[];
+  summary?: MospiSummary | null;
+  totalRecords?: number;
   onInspectWork?: (project: Project) => void;
   onExploreEngine?: (engineId: string) => void;
   onOpenScrutinyQueue?: () => void;
@@ -54,6 +57,8 @@ interface ExecutiveCommandHubProps {
 
 export function ExecutiveCommandHub({
   projects,
+  summary,
+  totalRecords,
   onInspectWork,
   onExploreEngine,
   onOpenScrutinyQueue,
@@ -65,11 +70,11 @@ export function ExecutiveCommandHub({
     // The national command view keeps its reference baseline visible even before
     // an officer imports a local CSV. Once records exist, every number switches
     // to the live dataset instead of silently mixing the two sources.
-    const totalProjects = projects.length;
+    const totalProjects = totalRecords ?? projects.length;
     const flagged = projects.filter(
       (p) => (p.risk_score || 0) >= 80 || p.anomaly_type === 'Duplicate Location',
     ).length;
-    const totalSanctionedValue = projects.reduce(
+    const totalSanctionedValue = summary?.works_sanctioned_amount ?? projects.reduce(
       (acc, p) => acc + (p.sanctioned_amount || p.amount || 0),
       0,
     );
@@ -84,7 +89,7 @@ export function ExecutiveCommandHub({
       openInquiries,
       sanctionedCrores: (totalSanctionedValue / 10_000_000).toFixed(2),
     };
-  }, [projects]);
+  }, [projects, summary, totalRecords]);
 
   return (
     <div className="space-y-6">
