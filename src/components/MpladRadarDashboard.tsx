@@ -84,6 +84,7 @@ import {
   type RiskWeights,
 } from '@/components/OperationsModules';
 import { ProjectQRButton, ProjectQRModal } from '@/components/ProjectQRModal';
+import { FiscalLapsingRadar } from '@/components/FiscalLapsingRadar';
 import type {
   AnomalyType,
   AuditResponse,
@@ -619,6 +620,7 @@ export default function MpladRadarDashboard() {
                 />
 
                 <MospiKpiGrid loading={loading} projects={projects} summary={summary} recordCount={recordCount} />
+                <FiscalLapsingRadar />
                 <div className="mb-0 rounded-xl border border-cyan-400/25 bg-gradient-to-r from-indigo-500/15 via-blue-500/10 to-emerald-500/10 px-4 py-3 text-sm font-black text-slate-100 shadow-[0_0_28px_rgba(34,211,238,0.08)]">
                   Active AI Vigilance Batch: {recordCount.toLocaleString('en-IN')} Ingested Works <span className="mx-1 text-slate-500">|</span> Total Disbursed: ₹{formatCrores(analytics.totalFunds)} <span className="mx-1 text-slate-500">|</span> <span className="text-rose-300">{analytics.flaggedHighRisk.toLocaleString('en-IN')} High Risk Fraud Cases</span>
                 </div>
