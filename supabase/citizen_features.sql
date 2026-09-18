@@ -20,6 +20,7 @@ create table if not exists public.citizen_feedback (
   site_status text not null,
   notes text not null,
   evidence_url text,
+  forensic_result jsonb,
   flag text default 'Pending Citizen Field Verification',
   created_at timestamptz not null default now()
 );
