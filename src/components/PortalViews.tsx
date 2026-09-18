@@ -33,6 +33,7 @@ import { ProjectQRModal } from '@/components/ProjectQRModal';
 import { CitizenEvidenceUpload } from '@/components/CitizenEvidenceUpload';
 import { ConstituencyScorecard } from '@/components/ConstituencyScorecard';
 import { WhistleblowerPortal } from '@/components/WhistleblowerPortal';
+import { PreSanctionComplianceGuard } from '@/components/PreSanctionComplianceGuard';
 
 const AssetMap = dynamic(() => import('./AssetMap'), {
   ssr: false,
@@ -1040,6 +1041,8 @@ export function AuthorityWorkspace({
             </div>
           )}
         </Panel>
+
+        <PreSanctionComplianceGuard title={form.title} vendor={form.vendor} location={form.location} budget={form.budget} projects={projects} />
 
         <Panel>
           <div className="mb-4 flex items-center gap-2 text-sm font-black">
