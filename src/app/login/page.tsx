@@ -75,7 +75,7 @@ export default function LoginPage() {
               </div>
               <p className="relative mt-8 text-[10px] font-black uppercase tracking-[0.25em] text-cyan-300">Government of India • MoSPI</p>
               <h1 className="relative mt-3 text-3xl font-black tracking-tight sm:text-4xl">e-SAKSHI<br /><span className="text-cyan-300">Secure Access</span></h1>
-              <p className="relative mt-5 max-w-md text-sm leading-6 text-slate-300">MPLADS RAKSHAK is a controlled intelligence workspace for public-funds vigilance, anomaly review, and transparent scheme monitoring.</p>
+              <p className="relative mt-5 max-w-md text-sm leading-6 text-slate-300">MPLADS SMART-AUDIT is a controlled intelligence workspace for public-funds vigilance, anomaly review, and transparent scheme monitoring.</p>
               <div className="relative mt-10 space-y-3 text-xs font-semibold text-slate-300">
                 <div className="flex items-center gap-2"><CheckCircle2 size={15} className="text-emerald-400" /> Session-scoped role access</div>
                 <div className="flex items-center gap-2"><CheckCircle2 size={15} className="text-emerald-400" /> Audit-first action controls</div>

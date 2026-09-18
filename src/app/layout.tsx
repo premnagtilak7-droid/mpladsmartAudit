@@ -5,10 +5,10 @@ import { LangProvider } from '@/lib/i18n/LangContext';
 import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata: Metadata = {
-  title: 'MPLADS RAKSHAK | National Risk & Anomaly Intelligence Layer • MoSPI',
+  title: 'MPLADS SMART-AUDIT | National Risk & Anomaly Intelligence Layer • MoSPI',
   description:
     'National AI-Powered Anomaly Intelligence & Decision Support Layer for Public Funds Governance — Ministry of Statistics & Programme Implementation (MoSPI)',
-  applicationName: 'MPLADS RAKSHAK',
+  applicationName: 'MPLADS SMART-AUDIT',
   icons: {
     icon: '/favicon.svg',
   },

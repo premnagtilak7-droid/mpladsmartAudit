@@ -1,8 +1,8 @@
 {
-  "name": "mplad-radar",
+  "name": "mplads-smart-audit",
   "version": "1.0.0",
   "private": true,
-  "description": "MPLAD Radar | AI-Powered Anomaly & Audit Portal (SIH26102)",
+  "description": "MPLADS Smart-Audit | AI-Powered Anomaly & Audit Portal (SIH26102)",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

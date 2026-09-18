@@ -115,7 +115,7 @@ export function Header({
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="text-base font-black tracking-tight text-white font-sans sm:text-lg">
-                  MPLADS <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-sky-400">RAKSHAK</span>
+                  MPLADS <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-sky-400">SMART-AUDIT</span>
                 </span>
                 <span className="rounded bg-blue-600/30 border border-blue-400/40 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-blue-300">
                   MoSPI
