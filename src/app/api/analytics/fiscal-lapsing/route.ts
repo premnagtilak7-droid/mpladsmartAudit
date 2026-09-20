@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getAdminClient } from '@/lib/supabaseAdmin';
 
 export const runtime = 'nodejs';
@@ -38,12 +39,20 @@ function fiscalYearEnd(now: Date) {
   return new Date(year, 2, 31, 23, 59, 59);
 }
 
-async function loadRows() {
+function getDataClient(): SupabaseClient {
   const admin = getAdminClient();
-  if (!admin) throw new Error('Supabase server configuration is missing.');
+  if (admin) return admin;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  if (!url || !key) throw new Error('Supabase configuration is missing.');
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+async function loadRows() {
+  const client = getDataClient();
   const rows: Row[] = [];
   for (let page = 0; ; page += 1) {
-    const result = await admin
+    const result = await client
       .from('projects')
       .select('id, work_id, work_title, state, district, constituency, status, sanctioned_amount, spent_amount, sanction_date, created_at')
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
