@@ -78,8 +78,8 @@ export const REQUIRED_FIELDS = ['work_id', 'work_title'] as const;
 
 /** Human-readable header names accepted for each canonical field. */
 const FIELD_ALIASES: Record<string, string[]> = {
-  work_id: ['work_id', 'WORK_ID', 'Work ID', 'workId', 'work id', 'WorkID', 'work_code', 'work_no'],
-  work_title: ['work_title', 'ACTIVITY_NAME', 'WORK_DESCRIPTION', 'Work', 'work', 'Work Title', 'workTitle', 'name', 'title', 'work_name'],
+  work_id: ['work_id', 'WORK_ID', 'Work ID', 'workId', 'work id', 'WorkID', 'work_code', 'work_no', 'Project ID', 'project_id', 'Project_ID', 'ID', 'id', 'Code'],
+  work_title: ['work_title', 'ACTIVITY_NAME', 'WORK_DESCRIPTION', 'Work', 'work', 'Work Title', 'workTitle', 'name', 'title', 'work_name', 'Project Name', 'project_name', 'Project Title', 'project_title', 'Description', 'description', 'Activity', 'activity'],
   category: ['category', 'WORK_CATEGORY', 'Work Category', 'work_category', 'Category', 'sector', 'Sector'],
   district: ['district', 'IDA_NAME', 'District', 'District Name', 'district_name'],
   state: ['state', 'STATE_NAME', 'State', 'State Name', 'state_name'],
