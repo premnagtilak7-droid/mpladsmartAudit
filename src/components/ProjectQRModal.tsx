@@ -20,6 +20,7 @@ function projectUrl(project: Project) {
 
 function anomalyReasons(project: Project): string[] {
   const reasons: string[] = [];
+  if (project.anomaly_tag) reasons.push(project.anomaly_tag);
   if (project.anomaly_type === 'Duplicate Location') reasons.push('Overlapping proximity signal detected');
   if (project.anomaly_type === 'Split Tendering') reasons.push('Split-tendering pattern detected');
   if (project.anomaly_type === 'Prohibited Asset') reasons.push('Work description requires statutory review');

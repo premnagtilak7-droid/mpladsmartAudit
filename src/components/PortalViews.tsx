@@ -353,7 +353,7 @@ export function CitizenPortal({
     const refreshPublicRegister = async () => {
       await refreshCitizenSummary();
       const [proposalResult, allocationResult, auditResult] = await Promise.all([
-        supabase.from('proposals').select('*', { count: 'exact' }).order('id', { ascending: true }).range(0, 999),
+        supabase.from('proposals').select('*', { count: 'exact' }).order('risk_score', { ascending: false, nullsFirst: false }).order('id', { ascending: true }).range(0, 999),
         supabase.from('allocations').select('*').range(0, 9999),
         supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).range(0, 999),
       ]);
@@ -375,7 +375,7 @@ export function CitizenPortal({
         return;
       }
       if (proposalResult.error) console.warn('[Supabase] proposals query failed; using live projects fallback', proposalResult.error);
-      const projectResult = await supabase.from('projects').select('*', { count: 'exact' }).order('id', { ascending: true }).range(0, 999);
+      const projectResult = await supabase.from('projects').select('*', { count: 'exact' }).order('risk_score', { ascending: false, nullsFirst: false }).order('id', { ascending: true }).range(0, 999);
       if (projectResult.error) console.error('[Supabase] proposals query failed; projects fallback also failed', { proposals: proposalResult.error, projects: projectResult.error });
       if (!cancelled && !projectResult.error) {
         console.info('[Supabase] projects public query', { count: projectResult.count, returned: projectResult.data?.length ?? 0, first: projectResult.data?.[0] ?? null });
@@ -443,6 +443,8 @@ export function CitizenPortal({
     const { data, error } = await supabase
       .from(publicSource)
       .select('*')
+      .order('risk_score', { ascending: false, nullsFirst: false })
+      .order('id', { ascending: true })
       .range(start, start + 999);
     if (!error && data?.length) {
       setLiveProjects((current) => [

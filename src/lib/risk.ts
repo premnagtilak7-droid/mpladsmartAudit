@@ -5,7 +5,7 @@ export function anomalyTagForScore(score: number | null | undefined): string | n
   const value = Number(score) || 0;
   if (value >= 90) return 'Cost Inflation 32% (Severe)';
   if (value >= 85) return 'Cost Outlier Anomaly';
-  if (value >= 75) return 'Duplicate Spatial Scope / Timeline Review';
+  if (value >= 75) return 'Duplicate Scope / Timeline Delay';
   return null;
 }
 

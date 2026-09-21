@@ -155,6 +155,7 @@ export function useProjects(houseFilter: HouseFilter = 'ALL'): ProjectsState {
       const { data, error } = await supabase
         .from(sourceTable)
         .select('*')
+        .order('risk_score', { ascending: false, nullsFirst: false })
         .order('id', { ascending: true })
         .range(start, start + 999);
       if (error) throw error;
@@ -243,6 +244,7 @@ async function fetchAllProjects(houseFilter: HouseFilter, onPage: (rows: Supabas
       const pattern = housePattern(houseFilter);
       if (pattern) query = query.ilike('house', `%${pattern}%`);
       const result = await query
+        .order('risk_score', { ascending: false, nullsFirst: false })
         .order('id', { ascending: true })
         .range(0, pageSize - 1)
         .abortSignal(controller.signal);
