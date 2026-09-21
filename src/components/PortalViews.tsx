@@ -204,6 +204,32 @@ function Button({
   );
 }
 
+function normalizePublicProject(raw: Record<string, unknown>, index: number): Project {
+  return {
+    id: Number(raw.id) || index + 1,
+    house: String(raw.house ?? '') || null,
+    sr_no: String(raw.sr_no ?? '') || null,
+    state: String(raw.state ?? raw.State ?? '') || null,
+    category: String(raw.category ?? '') || null,
+    work: String(raw.work_title ?? raw.work_name ?? raw.work ?? raw.Work ?? '') || null,
+    work_id: String(raw.work_id ?? raw['Work ID'] ?? '') || null,
+    ida: String(raw.ida ?? '') || null,
+    mp: String(raw.mp ?? '') || null,
+    constituency: String(raw.constituency ?? '') || null,
+    expenditure_date: String(raw.expenditure_date ?? '') || null,
+    vendor_name: String(raw.vendor_name ?? raw.vendor ?? '') || null,
+    payment_status: String(raw.payment_status ?? raw.status ?? '') || null,
+    status: String(raw.status ?? '') || null,
+    latitude: Number(raw.latitude) || null,
+    longitude: Number(raw.longitude) || null,
+    amount: Number(raw.spent_amount ?? raw.amount) || 0,
+    allocated_amount: Number(raw.allocated_amount) || null,
+    sanctioned_amount: Number(raw.sanctioned_amount) || null,
+    risk_score: Number(raw.risk_score) || 0,
+    anomaly_type: raw.anomaly_type as Project['anomaly_type'] || null,
+  };
+}
+
 export function CitizenPortal({
   projects,
   language,
@@ -234,34 +260,17 @@ export function CitizenPortal({
   const [liveProjects, setLiveProjects] = useState<Project[]>(projects);
   const [citizenSummary, setCitizenSummary] = useState<MospiSummary | null>(summary ?? null);
   const [citizenSummaryLoading, setCitizenSummaryLoading] = useState(true);
+  const [publicSource, setPublicSource] = useState<'proposals' | 'projects'>('proposals');
+  const [publicTotal, setPublicTotal] = useState(0);
+  const [publicPage, setPublicPage] = useState(1);
+  const [publicLoading, setPublicLoading] = useState(true);
+  const [publicLoadingMore, setPublicLoadingMore] = useState(false);
   const [evidenceProject, setEvidenceProject] = useState<Project | null>(null);
   const [scorecardOpen, setScorecardOpen] = useState(false);
   const [whistleblowerOpen, setWhistleblowerOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    const normalizePublicRow = (raw: Record<string, unknown>, index: number): Project => ({
-      id: Number(raw.id) || index + 1,
-      house: String(raw.house ?? '') || null,
-      sr_no: String(raw.sr_no ?? '') || null,
-      state: String(raw.state ?? raw.State ?? '') || null,
-      category: String(raw.category ?? '') || null,
-      work: String(raw.work_title ?? raw.work_name ?? raw.work ?? raw.Work ?? '') || null,
-      work_id: String(raw.work_id ?? raw['Work ID'] ?? '') || null,
-      ida: String(raw.ida ?? '') || null,
-      mp: String(raw.mp ?? '') || null,
-      constituency: String(raw.constituency ?? '') || null,
-      expenditure_date: String(raw.expenditure_date ?? '') || null,
-      vendor_name: String(raw.vendor_name ?? raw.vendor ?? '') || null,
-      payment_status: String(raw.payment_status ?? raw.status ?? '') || null,
-      status: String(raw.status ?? '') || null,
-      latitude: Number(raw.latitude) || null,
-      longitude: Number(raw.longitude) || null,
-      amount: Number(raw.spent_amount ?? raw.amount) || 0,
-      sanctioned_amount: Number(raw.sanctioned_amount) || null,
-      risk_score: Number(raw.risk_score) || 0,
-      anomaly_type: raw.anomaly_type as Project['anomaly_type'] || null,
-    });
     const refreshCitizenSummary = async () => {
       const { data, error } = await supabase.rpc('get_public_citizen_summary');
       if (!cancelled && !error) {
@@ -284,13 +293,23 @@ export function CitizenPortal({
     };
     const refreshPublicRegister = async () => {
       await refreshCitizenSummary();
-      const proposalResult = await supabase.from('proposals').select('*').range(0, 999);
-      if (!cancelled && !proposalResult.error && proposalResult.data?.length) {
-        setLiveProjects(proposalResult.data.map((row, index) => normalizePublicRow(row as Record<string, unknown>, index)));
+      const proposalResult = await supabase.from('proposals').select('*', { count: 'exact' }).range(0, 999);
+      if (!cancelled && !proposalResult.error && (proposalResult.data?.length || proposalResult.count)) {
+        setPublicSource('proposals');
+        setPublicTotal(proposalResult.count ?? proposalResult.data?.length ?? 0);
+        setPublicPage(1);
+        setLiveProjects((proposalResult.data || []).map((row, index) => normalizePublicProject(row as Record<string, unknown>, index)));
+        setPublicLoading(false);
         return;
       }
-      const projectResult = await supabase.from('projects').select('*').range(0, 999);
-      if (!cancelled && !projectResult.error && projectResult.data?.length) setLiveProjects(projectResult.data.map((row, index) => normalizePublicRow(row as Record<string, unknown>, index)));
+      const projectResult = await supabase.from('projects').select('*', { count: 'exact' }).range(0, 999);
+      if (!cancelled && !projectResult.error) {
+        setPublicSource('projects');
+        setPublicTotal(projectResult.count ?? projectResult.data?.length ?? 0);
+        setPublicPage(1);
+        setLiveProjects((projectResult.data || []).map((row, index) => normalizePublicProject(row as Record<string, unknown>, index)));
+      }
+      if (!cancelled) setPublicLoading(false);
     };
     void refreshPublicRegister();
     const channel = supabase.channel('public-transparency-live')
@@ -337,7 +356,26 @@ export function CitizenPortal({
     );
   };
 
-  // Dynamic public search and risk filtering over the visible live dataset.
+  const loadMorePublicRows = async () => {
+    if (publicLoadingMore || liveProjects.length >= publicTotal) return;
+    setPublicLoadingMore(true);
+    const nextPage = publicPage + 1;
+    const start = (nextPage - 1) * 1000;
+    const { data, error } = await supabase
+      .from(publicSource)
+      .select('*')
+      .range(start, start + 999);
+    if (!error && data?.length) {
+      setLiveProjects((current) => [
+        ...current,
+        ...data.map((row, index) => normalizePublicProject(row as Record<string, unknown>, start + index)),
+      ]);
+      setPublicPage(nextPage);
+    }
+    setPublicLoadingMore(false);
+  };
+
+  // Dynamic public search and risk filtering over all rows loaded so far.
   const filteredProjects = useMemo(() => {
     const q = query.trim().toLowerCase();
     return citizenProjects.filter((p) => {
@@ -621,8 +659,16 @@ export function CitizenPortal({
       </div>
 
       <section className="mt-6 overflow-hidden rounded-2xl border border-cyan-400/20 bg-[#1e293b]/75 shadow-2xl shadow-black/20 backdrop-blur-xl">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/70 p-5"><div><h2 className="text-sm font-black text-white">Public Transparency Register</h2><p className="mt-1 text-[11px] text-slate-400">Read-only project data for citizen oversight. Administrative actions are not available in this view.</p></div><span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-bold text-cyan-200">{filteredProjects.length.toLocaleString('en-IN')} visible</span></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/70 p-5"><div><h2 className="text-sm font-black text-white">Public Transparency Register</h2><p className="mt-1 text-[11px] text-slate-400">Read-only project data for citizen oversight. Administrative actions are not available in this view. Search and risk filters apply to the rows loaded so far.</p></div><span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-bold text-cyan-200">{filteredProjects.length.toLocaleString('en-IN')} of {publicTotal.toLocaleString('en-IN')} loaded</span></div>
         <div className="overflow-x-auto"><table className="min-w-full text-left text-xs"><thead className="bg-[#0f172a]/80 text-[10px] uppercase tracking-wider text-slate-400"><tr><th className="px-4 py-3">Work Name</th><th className="px-3 py-3">Constituency</th><th className="px-3 py-3">Vendor</th><th className="px-3 py-3">Status</th><th className="px-3 py-3 text-right">Fund Disbursed</th><th className="px-3 py-3 text-right">Risk</th><th className="px-4 py-3 text-right">Citizen Actions</th></tr></thead><tbody className="divide-y divide-slate-700/60">{filteredProjects.slice(0, 50).map((project) => <tr key={project.id} className="hover:bg-cyan-500/[0.04]"><td className="max-w-[260px] px-4 py-3"><div className="truncate font-bold text-slate-100">{project.work || 'Untitled work'}</div><div className="font-mono text-[10px] text-slate-500">{project.work_id || `MPLAD-${project.id}`}</div></td><td className="px-3 py-3 text-slate-300">{project.constituency || project.state || 'Not recorded'}</td><td className="px-3 py-3 text-slate-300">{project.vendor_name || 'Not recorded'}</td><td className="px-3 py-3 text-slate-300">{project.status || project.payment_status || 'Not recorded'}</td><td className="px-3 py-3 text-right font-bold text-slate-100">{formatINR(project.amount || 0)}</td><td className={`px-3 py-3 text-right font-black ${(project.risk_score || 0) >= 80 ? 'text-rose-300' : (project.risk_score || 0) >= 40 ? 'text-amber-300' : 'text-emerald-300'}`}>{project.risk_score || 0}/100</td><td className="px-4 py-3"><div className="flex flex-wrap justify-end gap-1.5"><button type="button" onClick={() => setQrProject(project)} className="rounded-md border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-200">View 360° Passport</button><button type="button" onClick={() => setEvidenceProject(project)} className="rounded-md border border-cyan-400/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-200">Verify On-Site</button><button type="button" onClick={() => setWhistleblowerOpen(true)} className="rounded-md border border-rose-400/30 bg-rose-500/10 px-2 py-1 text-[10px] font-bold text-rose-200">Report Anomaly</button></div></td></tr>)}</tbody></table></div>
+        {publicTotal > liveProjects.length && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-700/70 p-4">
+            <span className="text-[11px] text-slate-400">Showing {liveProjects.length.toLocaleString('en-IN')} of {publicTotal.toLocaleString('en-IN')} live public records.</span>
+            <button type="button" onClick={() => void loadMorePublicRows()} disabled={publicLoadingMore} className="rounded-lg border border-cyan-400/40 bg-cyan-500/10 px-3 py-2 text-[11px] font-black text-cyan-200 hover:bg-cyan-500/20 disabled:cursor-wait disabled:opacity-50">
+              {publicLoadingMore ? 'Loading live records…' : 'Load next 1,000 records'}
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Asset Drawers & Modals */}
