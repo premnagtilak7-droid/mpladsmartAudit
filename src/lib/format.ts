@@ -26,6 +26,15 @@ export function formatCrores(value: number | null | undefined): string {
   }).format(cr)} Cr`;
 }
 
+/** Format rupee Crores with a stable currency prefix, e.g. "₹3,940.00 Cr". */
+export function formatCroreCurrency(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(Number(value))) return `${RUPEE}0.00 Cr`;
+  return `${RUPEE}${new Intl.NumberFormat('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value) / 10_000_000)} Cr`;
+}
+
 /** Compact Indian currency for large footers, e.g. "279.14 Cr". */
 export function formatAmountCompact(value: number | null | undefined): string {
   if (value == null || Number.isNaN(Number(value))) return `${RUPEE} 0`;
@@ -59,8 +68,8 @@ export function truncate(value: string | null | undefined, max = 90): string {
 
 /** Map a risk score to a color token used in badges. */
 export function riskTone(score: number): 'rose' | 'amber' | 'emerald' {
-  if (score >= 80) return 'rose';
-  if (score >= 50) return 'amber';
+  if (score > 75) return 'rose';
+  if (score >= 40) return 'amber';
   return 'emerald';
 }
 

@@ -43,7 +43,7 @@ export function GISMapView({ projects, onInspect }: { projects: Project[]; onIns
       mapLng: validCoordinates ? lng : 72 + ((index * 29) % 16),
     };
   }), [projects]);
-  const flagged = assets.filter((asset) => (asset.risk_score ?? 0) >= 80 || asset.anomaly_type === 'Duplicate Location').length;
+  const flagged = assets.filter((asset) => (asset.risk_score ?? 0) > 75 || asset.anomaly_type === 'Duplicate Location').length;
   return <div className="relative overflow-hidden bg-[#0f172a]">
     <div className="absolute left-5 top-5 z-[500] flex items-center gap-2 rounded-xl border border-[#334155] bg-[#1e293b]/90 px-3 py-2 text-[11px] font-bold text-slate-200 shadow-lg backdrop-blur"><MapPin size={14} className="text-rose-400" /> High-risk GIS clusters <span className="text-rose-300">{flagged}</span><button onClick={() => setMode((current) => current === 'pins' ? 'heatmap' : 'pins')} className="ml-2 rounded-md border border-indigo-400/30 bg-indigo-500/15 px-2 py-1 text-[10px] text-indigo-100">{mode === 'pins' ? 'Heatmap' : 'Pins'}</button></div>
     <AssetMap assets={assets} onSelect={onInspect} mode={mode} />

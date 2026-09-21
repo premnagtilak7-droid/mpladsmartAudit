@@ -28,7 +28,7 @@ import {
 import type { AuditResponse, Project } from '@/lib/types';
 import type { MospiSummary } from '@/lib/useProjects';
 import { supabase } from '@/lib/supabase';
-import { formatCrores, formatINR } from '@/lib/format';
+import { formatCroreCurrency, formatCrores, formatINR } from '@/lib/format';
 import { useLang } from '@/lib/i18n/LangContext';
 import type { MapAsset } from './AssetMap';
 import { ProjectQRModal } from '@/components/ProjectQRModal';
@@ -301,7 +301,6 @@ export function CitizenPortal({
   const [publicBreakdown, setPublicBreakdown] = useState<PublicBreakdown | null>(null);
   const [allocationTotal, setAllocationTotal] = useState(0);
   const [auditLogs, setAuditLogs] = useState<Array<Record<string, unknown>>>([]);
-  const [satisfaction, setSatisfaction] = useState({ average: 0, count: 0 });
   const [publicSource, setPublicSource] = useState<'proposals' | 'projects'>('proposals');
   const [publicTotal, setPublicTotal] = useState(0);
   const [publicPage, setPublicPage] = useState(1);
@@ -350,11 +349,10 @@ export function CitizenPortal({
     };
     const refreshPublicRegister = async () => {
       await refreshCitizenSummary();
-      const [proposalResult, allocationResult, auditResult, feedbackResult] = await Promise.all([
+      const [proposalResult, allocationResult, auditResult] = await Promise.all([
         supabase.from('proposals').select('*', { count: 'exact' }).order('id', { ascending: true }).range(0, 999),
         supabase.from('allocations').select('*').range(0, 9999),
         supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).range(0, 999),
-        supabase.from('citizen_feedback').select('rating').not('rating', 'is', null).range(0, 9999),
       ]);
       if (!cancelled && !allocationResult.error) {
         const total = (allocationResult.data || []).reduce((sum, row) => {
@@ -364,10 +362,6 @@ export function CitizenPortal({
         setAllocationTotal(total);
       }
       if (!cancelled && !auditResult.error) setAuditLogs((auditResult.data || []) as Array<Record<string, unknown>>);
-      if (!cancelled && !feedbackResult.error) {
-        const ratings = (feedbackResult.data || []).map((row) => Number((row as Record<string, unknown>).rating)).filter((rating) => Number.isFinite(rating) && rating > 0);
-        setSatisfaction({ average: ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : 0, count: ratings.length });
-      }
       if (!cancelled && !proposalResult.error && (proposalResult.data?.length || proposalResult.count)) {
         console.info('[Supabase] proposals query', { count: proposalResult.count, returned: proposalResult.data?.length ?? 0, first: proposalResult.data?.[0] ?? null });
         setPublicSource('proposals');
@@ -395,7 +389,6 @@ export function CitizenPortal({
       .on('postgres_changes', { event: '*', schema: 'public', table: 'proposals' }, () => void refreshPublicRegister())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'allocations' }, () => void refreshPublicRegister())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => void refreshPublicRegister())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'citizen_feedback' }, () => void refreshPublicRegister())
       .subscribe();
     return () => { cancelled = true; void supabase.removeChannel(channel); };
   }, [projects]);
@@ -410,9 +403,7 @@ export function CitizenPortal({
   const fullDatasetCount = publicTotal || recordCount || citizenProjects.length;
   const publicHighRisk = publicBreakdown?.high_risk_works ?? citizenProjects.filter((project) => (project.risk_score || 0) > 75).length;
   const publicModerateRisk = publicBreakdown?.moderate_risk_works ?? citizenProjects.filter((project) => (project.risk_score || 0) >= 40 && (project.risk_score || 0) <= 75).length;
-  const metricValue = (value: number | undefined) => citizenSummaryLoading
-    ? '—'
-    : formatCrores(value || 0).replace(/\sCr$/, '');
+  const metricCurrency = (value: number | undefined) => citizenSummaryLoading ? '—' : formatCroreCurrency(value || 0);
 
   // Handle Geolocation trigger
   const handleUseLocation = () => {
@@ -583,21 +574,19 @@ export function CitizenPortal({
       <section className="mb-4 grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Verified assets in view</div><div className="mt-2 text-2xl font-black text-emerald-200">{fullDatasetCount.toLocaleString('en-IN')}</div><div className="text-[10px] text-slate-400">Unique live Supabase works</div></div>
         <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Open transparency reports</div><div className="mt-2 text-2xl font-black text-rose-200">{(publicHighRisk + publicModerateRisk).toLocaleString('en-IN')}</div><div className="text-[10px] text-slate-400">Medium/high risk records</div></div>
-        <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Community satisfaction</div><div className="mt-2 text-2xl font-black text-amber-200">{satisfaction.count ? satisfaction.average.toFixed(1) : '—'} <span className="text-sm">/ 5</span></div><div className="text-[10px] text-slate-400">{satisfaction.count.toLocaleString('en-IN')} live public reviews</div></div>
       </section>
 
       <section aria-label="Live public financial metrics" className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {[
-          ['Allocated limit', metricValue(publicAllocatedLimit), '₹ Cr', 'text-lime-300'],
-          ['Works recommended', citizenSummaryLoading ? '—' : `${(publicSummary?.works_recommended_count || 0).toLocaleString('en-IN')}`, `₹${metricValue(publicSummary?.works_recommended_amount)} Cr`, 'text-amber-300'],
-          ['Works sanctioned', citizenSummaryLoading ? '—' : `${(publicSummary?.works_sanctioned_count || 0).toLocaleString('en-IN')}`, `₹${metricValue(publicSummary?.works_sanctioned_amount)} Cr`, 'text-orange-300'],
-          ['Works completed', citizenSummaryLoading ? '—' : `${(publicSummary?.works_completed_count || 0).toLocaleString('en-IN')}`, `₹${metricValue(publicSummary?.works_completed_amount)} Cr`, 'text-cyan-300'],
-          ['Scheme expenditure', metricValue(publicSummary?.total_expenditure), '₹ Cr', 'text-emerald-300'],
-          ['Calamity fund consents', metricValue(publicSummary?.calamity_amount), '₹ Cr', 'text-indigo-300'],
+          ['Allocated limit', metricCurrency(publicAllocatedLimit), '', 'text-lime-300'],
+          ['Works recommended', citizenSummaryLoading ? '—' : `${(publicSummary?.works_recommended_count || 0).toLocaleString('en-IN')} works`, metricCurrency(publicSummary?.works_recommended_amount), 'text-amber-300'],
+          ['Works sanctioned', citizenSummaryLoading ? '—' : `${(publicSummary?.works_sanctioned_count || 0).toLocaleString('en-IN')} works`, metricCurrency(publicSummary?.works_sanctioned_amount), 'text-orange-300'],
+          ['Works completed', citizenSummaryLoading ? '—' : `${(publicSummary?.works_completed_count || 0).toLocaleString('en-IN')} works`, metricCurrency(publicSummary?.works_completed_amount), 'text-cyan-300'],
+          ['Scheme expenditure', metricCurrency(publicSummary?.total_expenditure), '', 'text-emerald-300'],
         ].map(([label, value, suffix, color]) => (
           <article key={label} className="rounded-2xl border border-slate-700/80 bg-[#16223a] p-4 shadow-xl">
             <div className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</div>
-            <div className={`mt-2 text-2xl font-black ${color}`}>{value} <span className="text-xs font-medium text-slate-400">{suffix}</span></div>
+            <div className={`mt-2 text-2xl font-black ${color}`}>{value} {suffix && <span className="text-xs font-medium text-slate-400">{suffix}</span>}</div>
           </article>
         ))}
       </section>
@@ -607,14 +596,9 @@ export function CitizenPortal({
           <button key={item.house} type="button" onClick={() => { setHouseFilter(item.house as 'Lok Sabha' | 'Rajya Sabha'); setActiveCitizenTab('register'); }} className="rounded-2xl border border-cyan-400/20 bg-[#10253b] p-4 text-left shadow-xl transition hover:-translate-y-0.5 hover:border-cyan-300/60">
             <div className="text-xs font-medium uppercase tracking-wide text-slate-400">{item.house} works</div>
             <div className="mt-2 text-2xl font-black text-white">{item.count.toLocaleString('en-IN')}</div>
-            <div className="mt-1 text-sm font-bold text-cyan-300">{formatCrores(item.allocation)}</div>
+            <div className="mt-1 text-sm font-bold text-cyan-300">{formatCroreCurrency(item.allocation)}</div>
           </button>
         ))}
-        <article className="rounded-2xl border border-violet-400/20 bg-[#211b3d] p-4 shadow-xl">
-          <div className="text-xs font-medium uppercase tracking-wide text-slate-400">Scheme expenditure & calamity consents</div>
-          <div className="mt-2 text-lg font-black text-white">₹{metricValue(publicSummary?.total_expenditure)} Cr</div>
-          <div className="mt-1 text-sm font-bold text-violet-300">₹{metricValue(publicSummary?.calamity_amount)} Cr calamity funds</div>
-        </article>
       </section>
 
       {/* Main Grid: Left Map + Right Action Cards */}
@@ -735,39 +719,6 @@ export function CitizenPortal({
               <Button variant="secondary" onClick={() => setEvidenceProject(selected || citizenProjects[0] || null)} className="w-full"><Camera size={14} /> Report Site Evidence</Button>
               <Button variant="secondary" onClick={() => setScorecardOpen(true)} className="w-full"><FileText size={14} /> Constituency Scorecard</Button>
             </div>
-          </Panel>
-
-          {/* Public Satisfaction Rating & Citizen Feedback Hook */}
-          <Panel>
-            <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-black text-white">
-                <Star size={17} className="text-amber-400" /> Public Satisfaction Rating
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-              setFeedbackProject(selected || citizenProjects[0] || null);
-              setFeedbackOpen(true);
-            }}
-            className="text-[11px] font-bold text-indigo-400 hover:underline"
-              >
-                + Rate work
-              </button>
-            </div>
-            <div className="flex items-end gap-2">
-              <span className="text-3xl font-black text-white">{satisfaction.count ? satisfaction.average.toFixed(1) : '—'}</span>
-              <span className="pb-1 text-xs text-slate-400">
-                / 5 stars across {satisfaction.count.toLocaleString('en-IN')} live Gram Sabha reviews
-              </span>
-            </div>
-            <div className="mt-3 flex gap-1.5 text-amber-400">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <Star key={n} size={16} fill={n <= 4 ? 'currentColor' : 'none'} />
-              ))}
-            </div>
-            <p className="mt-3 text-[11px] text-slate-400">
-              Citizens can directly grade project durability, water provision, road access, and timely handover.
-            </p>
           </Panel>
 
           {/* D. & E. DOWNLOAD OPEN DATA BUTTON & PDF / PRINT BUTTON */}

@@ -394,9 +394,9 @@ export function Header({
                         ₹{item.amount ? (item.amount / 100000).toFixed(1) : 0} L
                       </div>
                       <div className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[9px] font-bold ${
-                        (item.risk_score || 0) >= 80 ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300'
+                        (item.risk_score || 0) > 75 ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300'
                       }`}>
-                        {(item.risk_score || 0) >= 80 ? 'High Risk' : 'Sanctioned'}
+                        {(item.risk_score || 0) > 75 ? 'High Risk' : 'Sanctioned'}
                       </div>
                     </div>
                   </button>

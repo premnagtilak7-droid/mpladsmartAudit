@@ -48,8 +48,8 @@ export type AuditEntry = { kind: 'freeze' | 'memo' | 'note'; label: string; time
 
 function riskTone(score: number | null | undefined) {
   const s = score || 0;
-  if (s >= 80) return { label: 'High', cls: 'border-rose-400/30 bg-rose-500/15 text-rose-200', dot: 'bg-rose-500' };
-  if (s >= 50) return { label: 'Medium', cls: 'border-amber-400/30 bg-amber-500/15 text-amber-200', dot: 'bg-amber-400' };
+  if (s > 75) return { label: 'High', cls: 'border-rose-400/30 bg-rose-500/15 text-rose-200', dot: 'bg-rose-500' };
+  if (s >= 40) return { label: 'Medium', cls: 'border-amber-400/30 bg-amber-500/15 text-amber-200', dot: 'bg-amber-400' };
   return { label: 'Normal', cls: 'border-emerald-400/30 bg-emerald-500/15 text-emerald-200', dot: 'bg-emerald-400' };
 }
 
@@ -320,7 +320,7 @@ export function GeospatialDistribution({
   const [focus, setFocus] = useState<'all' | 'high'>('all');
 
   const scoped = useMemo(
-    () => (focus === 'high' ? projects.filter((p) => (p.risk_score || 0) >= 80) : projects),
+    () => (focus === 'high' ? projects.filter((p) => (p.risk_score || 0) > 75) : projects),
     [projects, focus],
   );
 
@@ -331,7 +331,7 @@ export function GeospatialDistribution({
       const cur = map.get(key) || { count: 0, value: 0, flagged: 0 };
       cur.count += 1;
       cur.value += p.amount || 0;
-      if ((p.risk_score || 0) >= 80) cur.flagged += 1;
+      if ((p.risk_score || 0) > 75) cur.flagged += 1;
       map.set(key, cur);
     }
     return [...map.entries()].sort((a, b) => b[1].value - a[1].value);
@@ -611,7 +611,7 @@ export function CaseManagement({
   const [determinationDraft, setDeterminationDraft] = useState<Record<string, string>>({});
 
   const candidates = useMemo(
-    () => projects.filter((p) => (p.risk_score || 0) >= 80).slice(0, 40),
+    () => projects.filter((p) => (p.risk_score || 0) > 75).slice(0, 40),
     [projects],
   );
 
@@ -830,8 +830,8 @@ export function StatutoryReports({
       scMet: scPct >= SC_TARGET,
       stMet: stPct >= ST_TARGET,
       utilization: sanctionedTotal > 0 ? (spentTotal / sanctionedTotal) * 100 : null,
-      scFlagged: scoped.filter((p) => targetAreaOf(p) === 'SC' && (p.risk_score || 0) >= 80).length,
-      stFlagged: scoped.filter((p) => targetAreaOf(p) === 'ST' && (p.risk_score || 0) >= 80).length,
+      scFlagged: scoped.filter((p) => targetAreaOf(p) === 'SC' && (p.risk_score || 0) > 75).length,
+      stFlagged: scoped.filter((p) => targetAreaOf(p) === 'ST' && (p.risk_score || 0) > 75).length,
     };
   }, [scoped]);
 
@@ -1151,7 +1151,7 @@ function componentSignals(p: Project): { rule: number; spatial: number; nlp: num
   const drivers = p.risk_drivers || [];
   const byKey = (k: string) => drivers.find((d) => d.key === k)?.score;
 
-  const rule = Math.min(100, (anomaly === 'Prohibited Asset' ? 92 : 28) + (risk >= 80 ? 16 : 0));
+  const rule = Math.min(100, (anomaly === 'Prohibited Asset' ? 92 : 28) + (risk > 75 ? 16 : 0));
   const spatial = byKey('location') ?? (anomaly === 'Duplicate Location' ? 90 : Math.round(risk * 0.55));
   const nlp = anomaly === 'Duplicate Location' ? 84 : anomaly === 'Split Tendering' ? 62 : Math.round(risk * 0.45);
   const ml = byKey('budget') ?? (anomaly === 'Split Tendering' ? 88 : Math.round(risk * 0.6));
@@ -1201,8 +1201,8 @@ export function ModelCalibration({
   }, [projects, weights, totalWeight]);
 
   const stats = useMemo(() => {
-    const baseHigh = recalculated.filter((r) => r.baseline >= 80).length;
-    const calHigh = recalculated.filter((r) => r.calibrated >= 80).length;
+    const baseHigh = recalculated.filter((r) => r.baseline > 75).length;
+    const calHigh = recalculated.filter((r) => r.calibrated > 75).length;
     const baseAvg = recalculated.length ? Math.round(recalculated.reduce((s, r) => s + r.baseline, 0) / recalculated.length) : 0;
     const calAvg = recalculated.length ? Math.round(recalculated.reduce((s, r) => s + r.calibrated, 0) / recalculated.length) : 0;
     const moved = recalculated.filter((r) => Math.abs(r.calibrated - r.baseline) >= 15).length;

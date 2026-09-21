@@ -52,6 +52,13 @@ create table if not exists public.audit_logs (
   created_at timestamptz not null default now()
 );
 
+alter table public.projects add column if not exists house_type text;
+alter table public.projects add column if not exists constituency_type text;
+update public.projects
+set house = coalesce(nullif(trim(house), ''), nullif(trim(house_type), ''), nullif(trim(constituency_type), ''))
+where (house is null or trim(house) = '')
+  and (house_type is not null or constituency_type is not null);
+
 alter table public.allocations enable row level security;
 alter table public.audit_logs enable row level security;
 alter table public.citizen_feedback enable row level security;
@@ -168,10 +175,10 @@ security invoker
 set search_path = public
 as $$
   select
-    count(*) filter (where lower(coalesce(house, '')) like '%lok%'),
-    coalesce(sum(coalesce(sanctioned_amount, spent_amount, 0)) filter (where lower(coalesce(house, '')) like '%lok%'), 0),
-    count(*) filter (where lower(coalesce(house, '')) like '%rajya%'),
-    coalesce(sum(coalesce(sanctioned_amount, spent_amount, 0)) filter (where lower(coalesce(house, '')) like '%rajya%'), 0),
+    count(*) filter (where lower(coalesce(nullif(house, ''), nullif(house_type, ''), nullif(constituency_type, ''), '')) like '%lok%' or coalesce(nullif(house, ''), nullif(house_type, ''), nullif(constituency_type, '')) = '2'),
+    coalesce(sum(coalesce(sanctioned_amount, spent_amount, 0)) filter (where lower(coalesce(nullif(house, ''), nullif(house_type, ''), nullif(constituency_type, ''), '')) like '%lok%' or coalesce(nullif(house, ''), nullif(house_type, ''), nullif(constituency_type, '')) = '2'), 0),
+    count(*) filter (where lower(coalesce(nullif(house, ''), nullif(house_type, ''), nullif(constituency_type, ''), '')) like '%rajya%' or coalesce(nullif(house, ''), nullif(house_type, ''), nullif(constituency_type, '')) = '1'),
+    coalesce(sum(coalesce(sanctioned_amount, spent_amount, 0)) filter (where lower(coalesce(nullif(house, ''), nullif(house_type, ''), nullif(constituency_type, ''), '')) like '%rajya%' or coalesce(nullif(house, ''), nullif(house_type, ''), nullif(constituency_type, '')) = '1'), 0),
     count(*) filter (where coalesce(risk_score, 0) > 75),
     count(*) filter (where coalesce(risk_score, 0) between 40 and 75),
     count(*) filter (where coalesce(risk_score, 0) < 40)

@@ -74,14 +74,14 @@ export function ExecutiveCommandHub({
     // to the live dataset instead of silently mixing the two sources.
     const totalProjects = totalRecords ?? projects.length;
     const flagged = highRiskCount ?? projects.filter(
-      (p) => (p.risk_score || 0) >= 80 || p.anomaly_type === 'Duplicate Location',
+      (p) => (p.risk_score || 0) > 75 || p.anomaly_type === 'Duplicate Location',
     ).length;
     const totalSanctionedValue = summary?.works_sanctioned_amount ?? projects.reduce(
       (acc, p) => acc + (p.sanctioned_amount || p.amount || 0),
       0,
     );
     const openInquiries = projects.filter(
-      (p) => (p.risk_score || 0) >= 85 && p.payment_status !== 'Completed',
+      (p) => (p.risk_score || 0) > 75 && p.payment_status !== 'Completed',
     ).length;
 
     return {

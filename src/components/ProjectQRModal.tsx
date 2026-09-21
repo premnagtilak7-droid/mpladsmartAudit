@@ -7,8 +7,8 @@ import { formatINR } from '@/lib/format';
 import { CitizenVerification } from '@/components/CitizenVerification';
 
 function riskMeta(score: number) {
-  if (score >= 80) return { label: 'HIGH RISK', range: '80–100', tone: 'border-rose-400/40 bg-rose-500/15 text-rose-200', bar: 'bg-rose-500' };
-  if (score >= 40) return { label: 'MEDIUM RISK', range: '40–79', tone: 'border-amber-400/40 bg-amber-500/15 text-amber-200', bar: 'bg-amber-400' };
+  if (score > 75) return { label: 'HIGH RISK', range: '76–100', tone: 'border-rose-400/40 bg-rose-500/15 text-rose-200', bar: 'bg-rose-500' };
+  if (score >= 40) return { label: 'MEDIUM RISK', range: '40–75', tone: 'border-amber-400/40 bg-amber-500/15 text-amber-200', bar: 'bg-amber-400' };
   return { label: 'LOW RISK', range: '0–39', tone: 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200', bar: 'bg-emerald-400' };
 }
 
@@ -23,7 +23,7 @@ function anomalyReasons(project: Project): string[] {
   if (project.anomaly_type === 'Duplicate Location') reasons.push('Overlapping proximity signal detected');
   if (project.anomaly_type === 'Split Tendering') reasons.push('Split-tendering pattern detected');
   if (project.anomaly_type === 'Prohibited Asset') reasons.push('Work description requires statutory review');
-  if ((project.risk_score || 0) >= 80 && reasons.length === 0) reasons.push('Composite risk score is above the scrutiny threshold');
+  if ((project.risk_score || 0) > 75 && reasons.length === 0) reasons.push('Composite risk score is above the scrutiny threshold');
   if ((project.risk_score || 0) >= 40 && reasons.length === 0) reasons.push('Moderate anomaly signals require verification');
   return reasons;
 }

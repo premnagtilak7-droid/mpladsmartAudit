@@ -168,7 +168,7 @@ async function fetchRiskQueue(houseFilter: HouseFilter): Promise<SupabaseProject
   let query = supabase
     .from('projects')
     .select('*')
-    .gte('risk_score', 80);
+    .gt('risk_score', 75);
   const pattern = housePattern(houseFilter);
   if (pattern) query = query.ilike('house', `%${pattern}%`);
   const { data, error } = await query
@@ -185,7 +185,7 @@ async function fetchHighRiskCount(houseFilter: HouseFilter): Promise<number> {
   let query = supabase
     .from('projects')
     .select('id', { count: 'exact', head: true })
-    .gte('risk_score', 80);
+    .gt('risk_score', 75);
   const pattern = housePattern(houseFilter);
   if (pattern) query = query.ilike('house', `%${pattern}%`);
   const { count, error } = await query;
@@ -195,20 +195,25 @@ async function fetchHighRiskCount(houseFilter: HouseFilter): Promise<number> {
 
 async function fetchMospiSummary(houseFilter: HouseFilter): Promise<MospiSummary | null> {
   if (!supabase) return null;
-  const { data, error } = await supabase.rpc('get_esakshi_summary', { house_filter: houseFilter });
-  if (error) throw error;
+  const [{ data, error }, publicResult] = await Promise.all([
+    supabase.rpc('get_esakshi_summary', { house_filter: houseFilter }),
+    houseFilter === 'ALL' ? supabase.rpc('get_public_citizen_summary') : Promise.resolve({ data: null, error: null }),
+  ]);
+  if (error && publicResult.error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
-  if (!row) return null;
+  const publicRow = Array.isArray(publicResult.data) ? publicResult.data[0] : publicResult.data;
+  if (!row && !publicRow) return null;
+  const source = publicRow || row;
   return {
-    allocated_limit: Number(row.allocated_limit) || 0,
-    calamity_amount: Number(row.calamity_amount) || 0,
-    works_recommended_count: Number(row.works_recommended_count) || 0,
-    works_recommended_amount: Number(row.works_recommended_amount) || 0,
-    works_sanctioned_count: Number(row.works_sanctioned_count) || 0,
-    works_sanctioned_amount: Number(row.works_sanctioned_amount) || 0,
-    works_completed_count: Number(row.works_completed_count) || 0,
-    works_completed_amount: Number(row.works_completed_amount) || 0,
-    total_expenditure: Number(row.total_expenditure) || 0,
+    allocated_limit: Number(source.allocated_limit) || 0,
+    calamity_amount: Number(row?.calamity_amount ?? source.calamity_amount) || 0,
+    works_recommended_count: Number(source.works_recommended_count) || 0,
+    works_recommended_amount: Number(source.works_recommended_amount) || 0,
+    works_sanctioned_count: Number(source.works_sanctioned_count) || 0,
+    works_sanctioned_amount: Number(source.works_sanctioned_amount) || 0,
+    works_completed_count: Number(source.works_completed_count) || 0,
+    works_completed_amount: Number(source.works_completed_amount) || 0,
+    total_expenditure: Number(source.total_expenditure) || 0,
   };
 }
 
@@ -301,7 +306,7 @@ function houseValue(value: unknown): Project['house'] {
 function computeLiveAnalytics(rows: Project[]): Analytics {
   return rows.reduce<Analytics>((summary, row) => {
     const amount = Number(row.amount) || 0;
-    const highRisk = (Number(row.risk_score) || 0) >= 80;
+    const highRisk = (Number(row.risk_score) || 0) > 75;
     summary.totalFunds += amount;
     summary.totalWorks += 1;
     if (highRisk) {

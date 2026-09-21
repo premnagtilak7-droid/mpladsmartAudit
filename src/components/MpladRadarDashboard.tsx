@@ -169,7 +169,7 @@ export default function MpladRadarDashboard() {
   const [passportProject, setPassportProject] = useState<Project | null>(null);
 
   useEffect(() => {
-    if (passportProject && (passportProject.risk_score || 0) >= 80) {
+    if (passportProject && (passportProject.risk_score || 0) > 75) {
       playIfEnabled(isMuted, 'playAlert');
     }
   }, [passportProject, isMuted]);
@@ -252,13 +252,13 @@ export default function MpladRadarDashboard() {
   };
 
   const highRiskRows = useMemo(
-    () => riskQueue ?? scopedProjects.filter((p) => (p.risk_score || 0) >= 80),
+    () => riskQueue ?? scopedProjects.filter((p) => (p.risk_score || 0) > 75),
     [riskQueue, scopedProjects],
   );
 
   const riskChartData = useMemo(() => {
-    const high = scopedProjects.filter((p) => (p.risk_score || 0) >= 80).length;
-    const medium = scopedProjects.filter((p) => (p.risk_score || 0) >= 50 && (p.risk_score || 0) < 80).length;
+    const high = scopedProjects.filter((p) => (p.risk_score || 0) > 75).length;
+    const medium = scopedProjects.filter((p) => (p.risk_score || 0) >= 40 && (p.risk_score || 0) <= 75).length;
     const normal = Math.max(0, scopedProjects.length - high - medium);
     const total = Math.max(1, scopedProjects.length);
     return [
@@ -353,8 +353,8 @@ export default function MpladRadarDashboard() {
       return;
     }
     const result = recalibrateScores(projects, riskWeights);
-    const highRisk = result.filter((r) => r.calibrated >= 80).length;
-    const baselineHigh = result.filter((r) => r.baseline >= 80).length;
+    const highRisk = result.filter((r) => r.calibrated > 75).length;
+    const baselineHigh = result.filter((r) => r.baseline > 75).length;
     const avgScore = result.length
       ? Math.round(result.reduce((s, r) => s + r.calibrated, 0) / result.length)
       : 0;
@@ -599,9 +599,9 @@ export default function MpladRadarDashboard() {
                 <OperationalWorkflowHub
                   totalRecords={recordCount || projects.length}
                   highRiskRecords={highRiskRows.length}
-                  flagshipProject={scopedProjects.find(p => (p.risk_score || 0) >= 80) || scopedProjects[0]}
+                  flagshipProject={scopedProjects.find(p => (p.risk_score || 0) > 75) || scopedProjects[0]}
                   onInspectFlagship={() => {
-                    const target = scopedProjects.find(p => (p.risk_score || 0) >= 80) || scopedProjects[0];
+                    const target = scopedProjects.find(p => (p.risk_score || 0) > 75) || scopedProjects[0];
                     if (target) setPassportProject(target);
                   }}
                   onStepClick={(stepId) => {
@@ -612,11 +612,11 @@ export default function MpladRadarDashboard() {
                     }
                     else if (stepId === 3) setActiveTab('anomalies');
                     else if (stepId === 4) {
-                      const target = scopedProjects.find(p => (p.risk_score || 0) >= 80) || scopedProjects[0];
+                      const target = scopedProjects.find(p => (p.risk_score || 0) > 75) || scopedProjects[0];
                       if (target) setPassportProject(target);
                     }
                     else if (stepId === 5) {
-                      const target = scopedProjects.find(p => (p.risk_score || 0) >= 80) || scopedProjects[0];
+                      const target = scopedProjects.find(p => (p.risk_score || 0) > 75) || scopedProjects[0];
                       if (target) setPassportProject(target);
                     }
                     else if (stepId === 6) setActiveTab('notes');
@@ -1134,7 +1134,7 @@ function ProjectTable({
                 <div className="flex flex-wrap items-center gap-2">
                   <button onClick={() => onInspect(project)} className="rounded-md border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-200">Inspect</button>
                   <ProjectQRButton project={project} onOpen={setQrProject} />
-                  {!lockedProjects[project.id] && (project.risk_score || 0) >= 80 && (
+                  {!lockedProjects[project.id] && (project.risk_score || 0) > 75 && (
                     <button onClick={() => onFreeze(project)} className="rounded-md bg-rose-600 px-2 py-1 text-[10px] font-bold text-white shadow-[0_0_12px_rgba(244,63,94,0.22)]">Freeze Disbursement</button>
                   )}
                 </div>
@@ -1149,9 +1149,9 @@ function ProjectTable({
 }
 
 function RiskBadge({ score }: { score: number }) {
-  const cls = score >= 80
+  const cls = score > 75
     ? 'bg-rose-500 text-white'
-    : score >= 50
+    : score >= 40
       ? 'bg-amber-400 text-amber-950'
       : 'bg-emerald-500 text-white';
   return <span className={`inline-flex min-w-10 justify-center rounded px-2 py-1 text-[10px] font-black ${cls}`}>{score}</span>;
@@ -1212,7 +1212,7 @@ function AnomalyQueue({
   return (
     <section className="rounded-2xl border border-rose-200 bg-white p-5 shadow-sm dark:border-rose-500/20 dark:bg-[#0f172a]">
       <div className="mb-4 flex items-center gap-2 text-sm font-bold text-rose-600 dark:text-rose-300">
-        <ShieldAlert size={16} /> Anomaly queue (risk_score ≥ 80)
+        <ShieldAlert size={16} /> Anomaly queue (risk_score &gt; 75)
       </div>
       <div className="space-y-3">
         {projects.map((project) => (
@@ -1244,7 +1244,7 @@ function AnomalyQueue({
 }
 
 function SignalMatrix({ projects, onInspect }: { projects: Project[]; onInspect: (project: Project) => void }) {
-  const flagged = projects.filter((project) => (project.risk_score || 0) >= 80);
+  const flagged = projects.filter((project) => (project.risk_score || 0) > 75);
   return <section className="overflow-hidden rounded-2xl border border-[#334155] bg-[#1e293b]/75 shadow-2xl shadow-black/20 backdrop-blur-xl"><div className="border-b border-[#334155]/70 p-5"><div className="text-sm font-black text-white">Risk Fusion Matrix</div><p className="mt-1 text-xs text-slate-400">Parallel signal contributions for every flagged project in the current selection.</p></div><div className="overflow-x-auto"><table className="w-full min-w-[940px] text-left text-xs"><thead className="bg-[#0f172a]/80 text-[10px] uppercase tracking-wider text-slate-400"><tr><th className="px-4 py-3">Project ID</th><th className="px-3 py-3">Work Title</th><th className="px-3 py-3">Rule Points</th><th className="px-3 py-3">Spatial Points</th><th className="px-3 py-3">NLP Points</th><th className="px-3 py-3">ML Points</th><th className="px-3 py-3">Total Score</th><th className="px-4 py-3">Action</th></tr></thead><tbody className="divide-y divide-[#334155]/60">{flagged.map((project) => { const signals = getRiskFusionSignals(project); return <tr key={project.id} className="hover:bg-rose-500/[0.05]"><td className="px-4 py-3 font-bold text-slate-200">{project.work_id || `MPLAD-${project.id}`}</td><td className="max-w-[250px] truncate px-3 py-3 text-slate-300">{project.work || 'Untitled work'}</td><td className="px-3 py-3 text-rose-300">+{signals.rule}</td><td className="px-3 py-3 text-amber-300">+{signals.spatial}</td><td className="px-3 py-3 text-cyan-300">+{signals.nlp}</td><td className="px-3 py-3 text-indigo-300">+{signals.ml}</td><td className="px-3 py-3"><RiskBadge score={project.risk_score || 0} /></td><td className="px-4 py-3"><button onClick={() => onInspect(project)} className="rounded-md border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-200">Inspect</button></td></tr>; })}</tbody></table></div>{flagged.length === 0 && <div className="py-10 text-center text-xs text-slate-400">No flagged projects in the current selection.</div>}</section>;
 }
 
@@ -1289,7 +1289,7 @@ function FundIntelligence({
       current.expenditure += expenditure;
       if (project.mp) current.mpIds.add(project.mp);
       current.works += 1;
-      if ((project.risk_score || 0) >= 80) current.flagged += 1;
+      if ((project.risk_score || 0) > 75) current.flagged += 1;
       grouped.set(state, current);
     }
     return [...grouped.values()]
@@ -1300,11 +1300,11 @@ function FundIntelligence({
 
   const visibleStates = useMemo(() => stateRows
     .filter((row) => row.state.toLowerCase().includes(search.trim().toLowerCase()))
-    .filter((row) => performanceFilter === 'All States' || (performanceFilter === 'High Performers' && row.utilization >= 80) || (performanceFilter === 'Average Performers' && row.utilization >= 50 && row.utilization < 80) || (performanceFilter === 'Needs Improvement' && row.utilization < 50))
+    .filter((row) => performanceFilter === 'All States' || (performanceFilter === 'High Performers' && row.utilization > 75) || (performanceFilter === 'Average Performers' && row.utilization >= 50 && row.utilization < 80) || (performanceFilter === 'Needs Improvement' && row.utilization < 50))
     .sort((a, b) => sortMode === 'allocated' ? b.allocated - a.allocated : sortMode === 'rank' ? a.rank - b.rank : b.utilization - a.utilization), [stateRows, search, performanceFilter, sortMode]);
 
   const performerCounts = useMemo(() => ({
-    high: stateRows.filter((row) => row.utilization >= 80).length,
+    high: stateRows.filter((row) => row.utilization > 75).length,
     average: stateRows.filter((row) => row.utilization >= 50 && row.utilization < 80).length,
     low: stateRows.filter((row) => row.utilization < 50).length,
   }), [stateRows]);
@@ -1331,7 +1331,7 @@ function FundIntelligence({
     return [bucket('High Utilizers (≥85%)', 85, 100), bucket('Good Utilizers (70–84%)', 70, 84.999), bucket('Moderate Utilizers (50–69%)', 50, 69.999), bucket('Low Utilizers (<50%)', 0, 49.999)];
   }, [projects]);
 
-  const tone = (utilization: number) => utilization >= 80 ? { accent: 'emerald', bar: 'bg-emerald-400', text: 'text-emerald-300' } : utilization >= 50 ? { accent: 'amber', bar: 'bg-amber-400', text: 'text-amber-300' } : { accent: 'rose', bar: 'bg-rose-400', text: 'text-rose-300' };
+  const tone = (utilization: number) => utilization > 75 ? { accent: 'emerald', bar: 'bg-emerald-400', text: 'text-emerald-300' } : utilization >= 50 ? { accent: 'amber', bar: 'bg-amber-400', text: 'text-amber-300' } : { accent: 'rose', bar: 'bg-rose-400', text: 'text-rose-300' };
 
   return <section className="space-y-5">
     <div className="grid gap-3 md:grid-cols-3">
@@ -1463,7 +1463,7 @@ function AuditDrawer({
     { label: 'Domain Rule Engine', points: fusion.rule, status: project.anomaly_type === 'Split Tendering' || project.anomaly_type === 'Prohibited Asset' ? 'Failed (Split Tendering & Prohibited Asset Check)' : 'Passed with watchlist signals', color: 'bg-rose-400' },
     { label: 'LOF Spatial Clustering', points: fusion.spatial, status: project.anomaly_type === 'Duplicate Location' ? 'Failed (GPS Overlap < 50m)' : 'Spatial review signal', color: 'bg-amber-400' },
     { label: 'NLP Title Similarity', points: fusion.nlp, status: project.anomaly_type === 'Prohibited Asset' ? 'Failed (92% Semantic Title Match)' : 'Similarity review signal', color: 'bg-cyan-400' },
-    { label: 'Isolation Forest ML', points: fusion.ml, status: score >= 80 ? 'Outlier (Z-Score = 4.2)' : 'Inlier / low deviation', color: 'bg-indigo-400' },
+    { label: 'Isolation Forest ML', points: fusion.ml, status: score > 75 ? 'Outlier (Z-Score = 4.2)' : 'Inlier / low deviation', color: 'bg-indigo-400' },
   ];
   const districtProjects = projects.filter((row) => row.state === project.state && row.constituency === project.constituency);
   const districtAvgCost = districtProjects.length ? districtProjects.reduce((sum, row) => sum + (Number(row.amount) || 0), 0) / districtProjects.length : Math.max(1, (Number(project.amount) || 0) / 4.7);
@@ -1502,7 +1502,7 @@ function AuditDrawer({
         <section className={`rounded-2xl border ${tone.border} ${tone.bg} p-5`}>
           <div className="flex flex-col items-center gap-5 sm:flex-row">
             <div className="relative h-36 w-36 shrink-0"><svg viewBox="0 0 112 112" className="h-full w-full -rotate-90"><circle cx="56" cy="56" r="45" fill="none" stroke="#334155" strokeWidth="10" /><circle cx="56" cy="56" r="45" fill="none" stroke={tone.color} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${(score / 100) * circumference} ${circumference}`} className="transition-all duration-700" /></svg><div className="absolute inset-0 grid place-items-center text-center"><div><div className="text-3xl font-black text-slate-900 dark:text-slate-100">{score}</div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">/ 100</div></div></div></div>
-            <div className="min-w-0 flex-1"><div className={`text-xs font-black uppercase tracking-[0.16em] ${tone.text}`}>{tone.label}</div><h4 className="mt-1 text-lg font-black text-white">Visual risk assessment</h4><p className="mt-2 text-xs leading-5 text-slate-300">The score combines the current anomaly enrichment, payment status, location signal, and vendor pattern for this project.</p>{score >= 80 && <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-rose-400/40 bg-rose-500/15 px-3 py-1.5 text-[10px] font-black text-rose-200"><Activity size={12} /> Prioritize Field Verification</div>}</div>
+            <div className="min-w-0 flex-1"><div className={`text-xs font-black uppercase tracking-[0.16em] ${tone.text}`}>{tone.label}</div><h4 className="mt-1 text-lg font-black text-white">Visual risk assessment</h4><p className="mt-2 text-xs leading-5 text-slate-300">The score combines the current anomaly enrichment, payment status, location signal, and vendor pattern for this project.</p>{score > 75 && <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-rose-400/40 bg-rose-500/15 px-3 py-1.5 text-[10px] font-black text-rose-200"><Activity size={12} /> Prioritize Field Verification</div>}</div>
           </div>
         </section>
 
@@ -1510,7 +1510,7 @@ function AuditDrawer({
           <IndicatorCard icon={<IndianRupee size={15} />} label="Cost Anomaly" value={`${costRatio}x above district average`} tone="rose" />
           <IndicatorCard icon={<Clock3 size={15} />} label="Completion Time" value={`${durationDays.toLocaleString('en-IN')} Days`} tone="amber" />
           <IndicatorCard icon={<Building2 size={15} />} label="Vendor Concentration" value={`${vendorContracts.toLocaleString('en-IN')} Projects`} tone="indigo" />
-          <IndicatorCard icon={<Activity size={15} />} label="ML Anomaly Score" value={score >= 80 ? 'High Risk / Unsupervised Outlier' : score >= 50 ? 'Moderate Risk / Review' : 'Normal Pattern'} tone={score >= 80 ? 'rose' : 'emerald'} />
+          <IndicatorCard icon={<Activity size={15} />} label="ML Anomaly Score" value={score > 75 ? 'High Risk / Unsupervised Outlier' : score >= 50 ? 'Moderate Risk / Review' : 'Normal Pattern'} tone={score > 75 ? 'rose' : 'emerald'} />
         </section>
 
         <section className="mt-5"><div className="mb-3 text-sm font-black text-white">District Statistical Benchmarks</div><div className="grid gap-3 lg:grid-cols-3"><BenchmarkCard title="Cost Comparison (₹)" projectLabel={`Project ₹${formatCrores(Number(project.amount) || 0)}`} districtLabel={`District avg ₹${formatCrores(districtAvgCost)}`} projectValue={Number(project.amount) || 0} districtValue={districtAvgCost} badge={`${costDeviation >= 0 ? '+' : ''}${costDeviation.toFixed(0)}% Cost Deviation`} alert={costDeviation > 100 ? 'red' : 'neutral'} /><BenchmarkCard title="Execution Time Comparison" projectLabel={`Project ${projectDuration.toLocaleString('en-IN')} Days`} districtLabel={`District avg ${districtAvgDuration.toLocaleString('en-IN')} Days`} projectValue={projectDuration} districtValue={districtAvgDuration} badge={`${Math.max(0, delayFactor).toFixed(0)}% Delay Factor`} alert={delayFactor > 50 ? 'amber' : 'neutral'} /><BenchmarkCard title="Vendor Concentration Comparison" projectLabel={`Vendor ${vendorContractsDistrict} Projects`} districtLabel={`District avg ${avgVendorContracts.toFixed(0)} Projects`} projectValue={vendorContractsDistrict} districtValue={avgVendorContracts} badge={vendorContractsDistrict > 15 ? 'High Monopoly Risk' : 'Within district range'} alert={vendorContractsDistrict > 15 ? 'red' : 'neutral'} /></div></section>
