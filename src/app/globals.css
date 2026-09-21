@@ -256,6 +256,25 @@ body {
   border-radius: 9999px;
 }
 
+.mplad-category-marker {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 3px solid currentColor;
+  border-radius: 9999px;
+  background: rgba(255,255,255,.96);
+  box-shadow: 0 0 0 3px rgba(15,23,42,.3), 0 0 18px currentColor;
+}
+.mplad-category-marker svg { stroke: currentColor; }
+.mplad-category-marker.mplad-marker-completed { color: #10b981; }
+.mplad-category-marker.mplad-marker-progress { color: #f59e0b; }
+.mplad-category-marker.mplad-marker-risk { color: #f43f5e; animation: mplad-category-pulse 1.35s ease-in-out infinite; }
+@keyframes mplad-category-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 3px rgba(244,63,94,.2), 0 0 16px #f43f5e; }
+  50% { transform: scale(1.14); box-shadow: 0 0 0 8px rgba(244,63,94,.08), 0 0 28px #f43f5e; }
+}
+
 .mplad-marker-core {
   position: relative;
   z-index: 2;

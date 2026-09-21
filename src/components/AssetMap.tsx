@@ -13,7 +13,9 @@ import {
 import type { LatLngExpression } from 'leaflet';
 import L from 'leaflet';
 import { Fragment, useEffect, useState } from 'react';
-import { QrCode } from 'lucide-react';
+import { Building2, Car, Layers, QrCode, Route, type LucideIcon } from 'lucide-react';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { formatINR } from '@/lib/format';
 import 'leaflet.heat';
 import type { Project } from '@/lib/types';
@@ -46,11 +48,21 @@ function isValidIndiaCoordinate(lat: number, lng: number) {
   return inside;
 }
 
+function categoryIcon(asset: MapAsset): LucideIcon {
+  const text = `${asset.category || ''} ${asset.work || ''}`.toLowerCase();
+  if (/road|highway|path|street|roadway/.test(text)) return text.includes('highway') ? Car : Route;
+  if (/bridge|flyover|culvert/.test(text)) return Layers;
+  if (/school|building|hospital|community|office|construction/.test(text)) return Building2;
+  return Building2;
+}
+
 function createAssetIcon(asset: MapAsset, completed: boolean, highRisk: boolean) {
   const tone = highRisk ? 'mplad-marker-risk' : completed ? 'mplad-marker-completed' : 'mplad-marker-progress';
+  const Icon = categoryIcon(asset);
+  const iconMarkup = renderToStaticMarkup(createElement(Icon, { size: 15, strokeWidth: 2.5, 'aria-hidden': true }));
   return L.divIcon({
     className: 'mplad-custom-marker-wrapper',
-    html: `<span class="mplad-custom-marker ${tone}"><span class="mplad-marker-core"></span></span>`,
+    html: `<span class="mplad-category-marker ${tone}" aria-label="${asset.category || 'MPLAD work'}">${iconMarkup}</span>`,
     iconSize: [28, 28],
     iconAnchor: [14, 14],
     popupAnchor: [0, -14],
