@@ -125,7 +125,7 @@ type ModuleId =
 
 export default function MpladRadarDashboard() {
   const [activeHouse, setActiveHouse] = useState<HouseFilter>('ALL');
-  const { projects, analytics, summary, highRiskCount, riskQueue, loading, error, live, recordCount, loadMore, loadingMore, reload } = useProjects(activeHouse);
+  const { projects, analytics, summary, highRiskCount, riskQueue, loading, error, live, demoFallback, recordCount, loadMore, loadingMore, reload } = useProjects(activeHouse);
   const { isMuted } = useTheme();
   const { lang: language, setLang, t } = useLang();
   const { user, isRestrictedForCitizen, setRestrictedAlert, setSwitchModalOpen, canAccessOfficerModules, canAccessAdminOnly } = useAuth();
@@ -520,7 +520,7 @@ export default function MpladRadarDashboard() {
           </nav>
 
           {!sidebarCollapsed && <div className="mt-auto rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-[11px] font-semibold text-emerald-300 shadow-[0_0_24px_rgba(16,233,129,0.06)]">
-            {live ? `Live Supabase Dataset: ${(recordCount || projects.length).toLocaleString('en-IN')} records` : 'Supabase connection required'}
+            {live ? `Live Supabase Dataset: ${(recordCount || projects.length).toLocaleString('en-IN')} records` : demoFallback ? `Local demo dataset: ${projects.length.toLocaleString('en-IN')} diverse works` : 'Supabase connection required'}
           </div>}
         </aside>
 

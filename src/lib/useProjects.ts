@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase, isSupabaseConfigured } from './supabase';
 import type { Analytics, AnomalyType, Project, RiskDriver } from './types';
+import { buildMockProjects } from './mockData';
 
 export interface MospiSummary {
   allocated_limit: number;
@@ -25,6 +26,7 @@ export interface ProjectsState {
   loading: boolean;
   error: string | null;
   live: boolean;
+  demoFallback: boolean;
   recordCount: number;
   loadMore: () => Promise<void>;
   loadingMore: boolean;
@@ -53,6 +55,7 @@ export function useProjects(houseFilter: HouseFilter = 'ALL'): ProjectsState {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState(false);
+  const [demoFallback, setDemoFallback] = useState(false);
   const [recordCount, setRecordCount] = useState(0);
   const [sourceTable, setSourceTable] = useState<'proposals' | 'projects'>('projects');
   const [loadingMore, setLoadingMore] = useState(false);
@@ -67,16 +70,19 @@ export function useProjects(houseFilter: HouseFilter = 'ALL'): ProjectsState {
       setLoading(true);
       setError(null);
       setLive(false);
+      setDemoFallback(false);
       setSourceTable('projects');
 
       if (!supabase || !isSupabaseConfigured) {
         if (!cancelled) {
-          setProjects([]);
-          setSummary(null);
-          setHighRiskCount(null);
-          setRiskQueue(null);
-          setRecordCount(0);
-          setError('NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured.');
+          const demoProjects = buildMockProjects();
+          setProjects(demoProjects);
+          setSummary(mockSummary(demoProjects));
+          setHighRiskCount(demoProjects.filter((project) => (project.risk_score || 0) > 75).length);
+          setRiskQueue(demoProjects.filter((project) => (project.risk_score || 0) > 75).slice(0, 50));
+          setRecordCount(demoProjects.length);
+          setDemoFallback(true);
+          setError(null);
           setLoading(false);
         }
         return;
@@ -121,13 +127,15 @@ export function useProjects(houseFilter: HouseFilter = 'ALL'): ProjectsState {
         setRecordCount(total);
       } catch (cause) {
         if (cancelled) return;
-        setProjects([]);
-        setSummary(null);
-        setHighRiskCount(null);
-        setRiskQueue(null);
-        setRecordCount(0);
+        const demoProjects = buildMockProjects();
+        setProjects(demoProjects);
+        setSummary(mockSummary(demoProjects));
+        setHighRiskCount(demoProjects.filter((project) => (project.risk_score || 0) > 75).length);
+        setRiskQueue(demoProjects.filter((project) => (project.risk_score || 0) > 75).slice(0, 50));
+        setRecordCount(demoProjects.length);
         setLive(false);
-        setError(cause instanceof Error ? cause.message : 'Unable to query Supabase projects.');
+        setDemoFallback(true);
+        setError(null);
         setLoading(false);
       }
     }
@@ -160,7 +168,7 @@ export function useProjects(houseFilter: HouseFilter = 'ALL'): ProjectsState {
   }, [loadingMore, projects.length, recordCount, sourceTable]);
 
   const analytics = useMemo(() => computeLiveAnalytics(projects), [projects]);
-  return { projects, analytics, summary, highRiskCount, riskQueue, loading, error, live, recordCount, loadMore, loadingMore, reload };
+  return { projects, analytics, summary, highRiskCount, riskQueue, loading, error, live, demoFallback, recordCount, loadMore, loadingMore, reload };
 }
 
 async function fetchRiskQueue(houseFilter: HouseFilter): Promise<SupabaseProjectRow[]> {
@@ -294,6 +302,24 @@ function stableNumericId(value: unknown): number | null {
   let hash = 0;
   for (let index = 0; index < text.length; index += 1) hash = ((hash << 5) - hash + text.charCodeAt(index)) | 0;
   return Math.abs(hash) || null;
+}
+
+function mockSummary(rows: Project[]): MospiSummary {
+  const total = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  const allocated = rows.reduce((sum, row) => sum + Number(row.allocated_amount || 0), 0);
+  const sanctioned = rows.filter((row) => Number(row.sanctioned_amount || 0) > 0);
+  const completed = rows.filter((row) => /completed|success/i.test(`${row.status || ''}`));
+  return {
+    allocated_limit: allocated,
+    calamity_amount: 0,
+    works_recommended_count: rows.length,
+    works_recommended_amount: allocated,
+    works_sanctioned_count: sanctioned.length,
+    works_sanctioned_amount: sanctioned.reduce((sum, row) => sum + Number(row.sanctioned_amount || 0), 0),
+    works_completed_count: completed.length,
+    works_completed_amount: completed.reduce((sum, row) => sum + Number(row.amount || 0), 0),
+    total_expenditure: total,
+  };
 }
 
 function houseValue(value: unknown): Project['house'] {
