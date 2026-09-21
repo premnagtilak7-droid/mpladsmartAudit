@@ -2,7 +2,6 @@
 
 import {
   Circle,
-  CircleMarker,
   LayersControl,
   MapContainer,
   Marker,
@@ -26,6 +25,21 @@ type MapMode = 'pins' | 'heatmap';
 type LeafletWithHeat = typeof L & {
   heatLayer: (points: Array<[number, number, number]>, options?: Record<string, unknown>) => L.Layer;
 };
+
+function isValidIndiaCoordinate(lat: number, lng: number) {
+  return Number.isFinite(lat) && Number.isFinite(lng) && lat >= 8 && lat <= 37 && lng >= 68 && lng <= 97;
+}
+
+function createAssetIcon(asset: MapAsset, completed: boolean, highRisk: boolean) {
+  const tone = highRisk ? 'mplad-marker-risk' : completed ? 'mplad-marker-completed' : 'mplad-marker-progress';
+  return L.divIcon({
+    className: 'mplad-custom-marker-wrapper',
+    html: `<span class="mplad-custom-marker ${tone}"><span class="mplad-marker-core"></span></span>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    popupAnchor: [0, -14],
+  });
+}
 
 // Pulsing user location icon
 const userLocationIcon = typeof window !== 'undefined'
@@ -124,6 +138,7 @@ export default function AssetMap({
   }, [userLocation]);
 
   const effectiveLocation = userLocation ?? browserLocation;
+  const visibleAssets = assets.filter((asset) => isValidIndiaCoordinate(asset.mapLat, asset.mapLng));
   const center: LatLngExpression = effectiveLocation
     ? [effectiveLocation.lat, effectiveLocation.lng]
     : [18.5912, 73.7389];
@@ -149,7 +164,7 @@ export default function AssetMap({
         className="h-full w-full"
       >
         <MapSizeFix />
-        <SetBounds markers={assets} userLocation={effectiveLocation} />
+        <SetBounds markers={visibleAssets} userLocation={effectiveLocation} />
         <LayersControl position="topright">
           <LayersControl.BaseLayer checked name="Dark Command">
             <TileLayer
@@ -195,8 +210,8 @@ export default function AssetMap({
           </Marker>
         )}
 
-        {mode === 'heatmap' && <HeatLayer assets={assets} />}
-        {mode === 'pins' && assets.map((asset) => {
+        {mode === 'heatmap' && <HeatLayer assets={visibleAssets} />}
+        {mode === 'pins' && visibleAssets.map((asset) => {
           const completed = /completed|success/i.test(`${asset.status || ''} ${asset.payment_status || ''}`);
           const highRisk = (asset.risk_score || 0) >= 80 || asset.anomaly_type === 'Duplicate Location';
           const statusLabel = highRisk ? 'Flagged Risk' : completed ? 'Completed' : 'In Progress';
@@ -218,28 +233,20 @@ export default function AssetMap({
                   }}
                 />
               )}
-              <CircleMarker
-                center={[asset.mapLat, asset.mapLng]}
-                radius={highRisk ? 8 : completed ? 7 : 6}
-                pathOptions={{
-                  color,
-                  fillColor: color,
-                  fillOpacity: 0.9,
-                  weight: 2,
-                  className: highRisk ? 'mplad-risk-pulse' : undefined,
-                }}
+              <Marker
+                position={[asset.mapLat, asset.mapLng]}
+                icon={createAssetIcon(asset, completed, highRisk)}
                 eventHandlers={{ click: () => onSelect(asset) }}
               >
-                <Tooltip direction="top" offset={[0, -8]}>
-                  <span className="text-xs font-semibold">{asset.work || 'MPLAD work'}</span>
-                  <br />
-                  <span className="text-xs">Cost: {formatINR(sanctionedCost)}</span>
+                <Tooltip direction="top" offset={[0, -10]} className="mplad-map-tooltip">
+                  <div className="space-y-0.5"><div className="font-black">{asset.work_id || `MPLAD-${asset.id}`}</div><div>{asset.ida || asset.constituency || 'District not recorded'}</div><div>Risk score: <b>{asset.risk_score || 0}/100</b></div></div>
                 </Tooltip>
                 <Popup className="mplad-map-popup">
                   <article className="min-w-[220px] space-y-3 text-slate-200">
                     <header>
                       <h3 className="text-sm font-black text-white">{asset.work || 'MPLAD work'}</h3>
                       <p className="mt-1 text-[11px] text-slate-400">{asset.work_id || `MPLAD-${asset.id}`}</p>
+                      <p className="mt-1 text-[11px] text-cyan-200">{asset.ida || asset.constituency || 'District not recorded'} • Risk {asset.risk_score || 0}/100</p>
                     </header>
                     <dl className="space-y-1.5 text-xs">
                       <div className="flex justify-between gap-4">
@@ -287,7 +294,7 @@ export default function AssetMap({
                     </div>
                   </article>
                 </Popup>
-              </CircleMarker>
+              </Marker>
             </Fragment>
           );
         })}

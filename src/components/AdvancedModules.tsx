@@ -31,11 +31,18 @@ function isConstituency(project: Project, category: 'SC' | 'ST') { const text = 
 
 export function GISMapView({ projects, onInspect }: { projects: Project[]; onInspect: (project: Project) => void }) {
   const [mode, setMode] = useState<'pins' | 'heatmap'>('pins');
-  const assets = useMemo<MapAsset[]>(() => projects.slice(0, 120).map((project, index) => ({
-    ...project,
-    mapLat: project.latitude ?? 8 + ((index * 17) % 25),
-    mapLng: project.longitude ?? 72 + ((index * 29) % 16),
-  })), [projects]);
+  const assets = useMemo<MapAsset[]>(() => projects.slice(0, 120).map((project, index) => {
+    const lat = Number(project.latitude);
+    const lng = Number(project.longitude);
+    const validCoordinates = Number.isFinite(lat) && Number.isFinite(lng) && lat >= 8 && lat <= 37 && lng >= 68 && lng <= 97;
+    return {
+      ...project,
+      // Invalid, zero, or out-of-India source coordinates use a deterministic
+      // India-only fallback rather than placing pins in the ocean.
+      mapLat: validCoordinates ? lat : 8 + ((index * 17) % 25),
+      mapLng: validCoordinates ? lng : 72 + ((index * 29) % 16),
+    };
+  }), [projects]);
   const flagged = assets.filter((asset) => (asset.risk_score ?? 0) >= 80 || asset.anomaly_type === 'Duplicate Location').length;
   return <div className="relative overflow-hidden bg-[#0f172a]">
     <div className="absolute left-5 top-5 z-[500] flex items-center gap-2 rounded-xl border border-[#334155] bg-[#1e293b]/90 px-3 py-2 text-[11px] font-bold text-slate-200 shadow-lg backdrop-blur"><MapPin size={14} className="text-rose-400" /> High-risk GIS clusters <span className="text-rose-300">{flagged}</span><button onClick={() => setMode((current) => current === 'pins' ? 'heatmap' : 'pins')} className="ml-2 rounded-md border border-indigo-400/30 bg-indigo-500/15 px-2 py-1 text-[10px] text-indigo-100">{mode === 'pins' ? 'Heatmap' : 'Pins'}</button></div>

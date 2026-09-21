@@ -242,6 +242,68 @@ body {
   border: none !important;
 }
 
+.mplad-custom-marker-wrapper {
+  background: transparent !important;
+  border: none !important;
+}
+
+.mplad-custom-marker {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+}
+
+.mplad-marker-core {
+  position: relative;
+  z-index: 2;
+  width: 11px;
+  height: 11px;
+  border: 2px solid rgba(255,255,255,.95);
+  border-radius: 9999px;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.mplad-marker-completed { color: #10b981; }
+.mplad-marker-completed::before,
+.mplad-marker-progress::before,
+.mplad-marker-risk::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 9999px;
+  opacity: .75;
+}
+.mplad-marker-completed::before { background: #10b981; animation: mplad-marker-pulse 1.8s ease-out infinite; }
+.mplad-marker-completed .mplad-marker-core { background: #10b981; }
+.mplad-marker-progress { color: #f59e0b; }
+.mplad-marker-progress::before { background: #f59e0b; animation: mplad-marker-pulse 1.6s ease-out infinite; }
+.mplad-marker-progress .mplad-marker-core { background: #f59e0b; }
+.mplad-marker-risk { color: #f43f5e; }
+.mplad-marker-risk::before { background: #f43f5e; animation: mplad-marker-ping 1.25s cubic-bezier(0,0,.2,1) infinite; }
+.mplad-marker-risk .mplad-marker-core { width: 13px; height: 13px; background: #f43f5e; box-shadow: 0 0 18px #f43f5e; }
+@keyframes mplad-marker-pulse {
+  0% { transform: scale(.7); opacity: .7; }
+  70%, 100% { transform: scale(1.7); opacity: 0; }
+}
+@keyframes mplad-marker-ping {
+  0% { transform: scale(.7); opacity: .9; }
+  75%, 100% { transform: scale(2.2); opacity: 0; }
+}
+
+.mplad-map-tooltip {
+  border: 1px solid rgba(103,232,249,.35) !important;
+  border-radius: 10px !important;
+  background: rgba(15,23,42,.86) !important;
+  color: #e2e8f0 !important;
+  box-shadow: 0 12px 30px rgba(2,6,23,.35) !important;
+  backdrop-filter: blur(12px);
+}
+.mplad-map-tooltip::before { border-top-color: rgba(15,23,42,.86) !important; }
+
+
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
   background: #ffffff;
