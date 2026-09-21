@@ -232,6 +232,8 @@ export function CitizenPortal({
   const [query, setQuery] = useState('');
   const [riskFilter, setRiskFilter] = useState<'all' | 'high' | 'medium' | 'normal'>('all');
   const [liveProjects, setLiveProjects] = useState<Project[]>(projects);
+  const [citizenSummary, setCitizenSummary] = useState<MospiSummary | null>(summary ?? null);
+  const [citizenSummaryLoading, setCitizenSummaryLoading] = useState(true);
   const [evidenceProject, setEvidenceProject] = useState<Project | null>(null);
   const [scorecardOpen, setScorecardOpen] = useState(false);
   const [whistleblowerOpen, setWhistleblowerOpen] = useState(false);
@@ -260,7 +262,28 @@ export function CitizenPortal({
       risk_score: Number(raw.risk_score) || 0,
       anomaly_type: raw.anomaly_type as Project['anomaly_type'] || null,
     });
+    const refreshCitizenSummary = async () => {
+      const { data, error } = await supabase.rpc('get_public_citizen_summary');
+      if (!cancelled && !error) {
+        const row = Array.isArray(data) ? data[0] : data;
+        if (row) {
+          setCitizenSummary({
+            allocated_limit: Number(row.allocated_limit) || 0,
+            calamity_amount: Number(row.calamity_amount) || 0,
+            works_recommended_count: Number(row.works_recommended_count) || 0,
+            works_recommended_amount: Number(row.works_recommended_amount) || 0,
+            works_sanctioned_count: Number(row.works_sanctioned_count) || 0,
+            works_sanctioned_amount: Number(row.works_sanctioned_amount) || 0,
+            works_completed_count: Number(row.works_completed_count) || 0,
+            works_completed_amount: Number(row.works_completed_amount) || 0,
+            total_expenditure: Number(row.total_expenditure) || 0,
+          });
+        }
+      }
+      if (!cancelled) setCitizenSummaryLoading(false);
+    };
     const refreshPublicRegister = async () => {
+      await refreshCitizenSummary();
       const proposalResult = await supabase.from('proposals').select('*').range(0, 999);
       if (!cancelled && !proposalResult.error && proposalResult.data?.length) {
         setLiveProjects(proposalResult.data.map((row, index) => normalizePublicRow(row as Record<string, unknown>, index)));
@@ -277,7 +300,15 @@ export function CitizenPortal({
     return () => { cancelled = true; void supabase.removeChannel(channel); };
   }, [projects]);
 
+  useEffect(() => {
+    if (summary && !citizenSummary) setCitizenSummary(summary);
+  }, [summary, citizenSummary]);
+
   const citizenProjects = liveProjects.length ? liveProjects : projects;
+  const publicSummary = citizenSummary ?? summary;
+  const metricValue = (value: number | undefined) => citizenSummaryLoading
+    ? '—'
+    : formatCrores(value || 0).replace(/\sCr$/, '');
 
   // Handle Geolocation trigger
   const handleUseLocation = () => {
@@ -386,10 +417,27 @@ export function CitizenPortal({
         </div>
       )}
 
-      <section className="mb-6 grid gap-3 sm:grid-cols-3">
+      <section className="mb-4 grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Verified assets in view</div><div className="mt-2 text-2xl font-black text-emerald-200">{filteredProjects.length.toLocaleString('en-IN')}</div><div className="text-[10px] text-slate-400">Public register results</div></div>
         <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Open transparency reports</div><div className="mt-2 text-2xl font-black text-rose-200">{citizenProjects.filter((p) => (Number(p.risk_score) || 0) >= 40).length.toLocaleString('en-IN')}</div><div className="text-[10px] text-slate-400">Medium/high risk records</div></div>
         <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Community satisfaction</div><div className="mt-2 text-2xl font-black text-amber-200">4.2 <span className="text-sm">/ 5</span></div><div className="text-[10px] text-slate-400">Public review signal</div></div>
+      </section>
+
+      <section aria-label="Live public financial metrics" className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        {[
+          ['Allocated limit', metricValue(publicSummary?.allocated_limit), '₹ Cr', 'text-lime-300'],
+          ['Works recommended', citizenSummaryLoading ? '—' : `${(publicSummary?.works_recommended_count || 0).toLocaleString('en-IN')}`, `₹${metricValue(publicSummary?.works_recommended_amount)} Cr`, 'text-amber-300'],
+          ['Works sanctioned', citizenSummaryLoading ? '—' : `${(publicSummary?.works_sanctioned_count || 0).toLocaleString('en-IN')}`, `₹${metricValue(publicSummary?.works_sanctioned_amount)} Cr`, 'text-orange-300'],
+          ['Works completed', citizenSummaryLoading ? '—' : `${(publicSummary?.works_completed_count || 0).toLocaleString('en-IN')}`, `₹${metricValue(publicSummary?.works_completed_amount)} Cr`, 'text-cyan-300'],
+          ['Scheme expenditure', metricValue(publicSummary?.total_expenditure), '₹ Cr', 'text-emerald-300'],
+          ['Calamity fund consents', metricValue(publicSummary?.calamity_amount), '₹ Cr', 'text-indigo-300'],
+        ].map(([label, value, suffix, color]) => (
+          <article key={label} className="rounded-2xl border border-slate-700/80 bg-[#17233b]/90 p-4 shadow-xl">
+            <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">{label}</div>
+            <div className={`mt-2 text-xl font-black ${color}`}>{value} <span className="text-[10px] text-slate-400">{suffix}</span></div>
+            <div className="mt-1 text-[9px] text-slate-500">Live Supabase aggregate</div>
+          </article>
+        ))}
       </section>
 
       {/* Main Grid: Left Map + Right Action Cards */}
@@ -574,7 +622,7 @@ export function CitizenPortal({
 
       <section className="mt-6 overflow-hidden rounded-2xl border border-cyan-400/20 bg-[#1e293b]/75 shadow-2xl shadow-black/20 backdrop-blur-xl">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/70 p-5"><div><h2 className="text-sm font-black text-white">Public Transparency Register</h2><p className="mt-1 text-[11px] text-slate-400">Read-only project data for citizen oversight. Administrative actions are not available in this view.</p></div><span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-bold text-cyan-200">{filteredProjects.length.toLocaleString('en-IN')} visible</span></div>
-        <div className="overflow-x-auto"><table className="min-w-full text-left text-xs"><thead className="bg-[#0f172a]/80 text-[10px] uppercase tracking-wider text-slate-400"><tr><th className="px-4 py-3">Work Name</th><th className="px-3 py-3">Constituency</th><th className="px-3 py-3">Vendor</th><th className="px-3 py-3">Status</th><th className="px-3 py-3 text-right">Fund Disbursed</th><th className="px-4 py-3 text-right">Citizen Actions</th></tr></thead><tbody className="divide-y divide-slate-700/60">{filteredProjects.slice(0, 50).map((project) => <tr key={project.id} className="hover:bg-cyan-500/[0.04]"><td className="max-w-[260px] px-4 py-3"><div className="truncate font-bold text-slate-100">{project.work || 'Untitled work'}</div><div className="font-mono text-[10px] text-slate-500">{project.work_id || `MPLAD-${project.id}`}</div></td><td className="px-3 py-3 text-slate-300">{project.constituency || project.state || 'Not recorded'}</td><td className="px-3 py-3 text-slate-300">{project.vendor_name || 'Not recorded'}</td><td className="px-3 py-3 text-slate-300">{project.status || project.payment_status || 'Not recorded'}</td><td className="px-3 py-3 text-right font-bold text-slate-100">{formatINR(project.amount || 0)}</td><td className="px-4 py-3"><div className="flex flex-wrap justify-end gap-1.5"><button type="button" onClick={() => setQrProject(project)} className="rounded-md border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-200">View 360° Passport</button><button type="button" onClick={() => setEvidenceProject(project)} className="rounded-md border border-cyan-400/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-200">Verify On-Site</button><button type="button" onClick={() => setWhistleblowerOpen(true)} className="rounded-md border border-rose-400/30 bg-rose-500/10 px-2 py-1 text-[10px] font-bold text-rose-200">Report Anomaly</button></div></td></tr>)}</tbody></table></div>
+        <div className="overflow-x-auto"><table className="min-w-full text-left text-xs"><thead className="bg-[#0f172a]/80 text-[10px] uppercase tracking-wider text-slate-400"><tr><th className="px-4 py-3">Work Name</th><th className="px-3 py-3">Constituency</th><th className="px-3 py-3">Vendor</th><th className="px-3 py-3">Status</th><th className="px-3 py-3 text-right">Fund Disbursed</th><th className="px-3 py-3 text-right">Risk</th><th className="px-4 py-3 text-right">Citizen Actions</th></tr></thead><tbody className="divide-y divide-slate-700/60">{filteredProjects.slice(0, 50).map((project) => <tr key={project.id} className="hover:bg-cyan-500/[0.04]"><td className="max-w-[260px] px-4 py-3"><div className="truncate font-bold text-slate-100">{project.work || 'Untitled work'}</div><div className="font-mono text-[10px] text-slate-500">{project.work_id || `MPLAD-${project.id}`}</div></td><td className="px-3 py-3 text-slate-300">{project.constituency || project.state || 'Not recorded'}</td><td className="px-3 py-3 text-slate-300">{project.vendor_name || 'Not recorded'}</td><td className="px-3 py-3 text-slate-300">{project.status || project.payment_status || 'Not recorded'}</td><td className="px-3 py-3 text-right font-bold text-slate-100">{formatINR(project.amount || 0)}</td><td className={`px-3 py-3 text-right font-black ${(project.risk_score || 0) >= 80 ? 'text-rose-300' : (project.risk_score || 0) >= 40 ? 'text-amber-300' : 'text-emerald-300'}`}>{project.risk_score || 0}/100</td><td className="px-4 py-3"><div className="flex flex-wrap justify-end gap-1.5"><button type="button" onClick={() => setQrProject(project)} className="rounded-md border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-200">View 360° Passport</button><button type="button" onClick={() => setEvidenceProject(project)} className="rounded-md border border-cyan-400/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-200">Verify On-Site</button><button type="button" onClick={() => setWhistleblowerOpen(true)} className="rounded-md border border-rose-400/30 bg-rose-500/10 px-2 py-1 text-[10px] font-bold text-rose-200">Report Anomaly</button></div></td></tr>)}</tbody></table></div>
       </section>
 
       {/* Asset Drawers & Modals */}

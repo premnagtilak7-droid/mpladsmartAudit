@@ -52,3 +52,63 @@ grant select, insert on public.citizen_feedback to anon, authenticated;
 insert into storage.buckets (id, name, public)
 values ('citizen-evidence', 'citizen-evidence', true)
 on conflict (id) do nothing;
+
+-- Public, read-only aggregate used by the Citizen Portal. The function keeps
+-- financial totals server-side so the browser never downloads the full dataset.
+-- `allocated_limit` is the sum of recorded sanctioned allocations when an
+-- explicit allocation column is not present in the source export.
+create or replace function public.get_public_citizen_summary()
+returns table (
+  allocated_limit numeric,
+  calamity_amount numeric,
+  works_recommended_count bigint,
+  works_recommended_amount numeric,
+  works_sanctioned_count bigint,
+  works_sanctioned_amount numeric,
+  works_completed_count bigint,
+  works_completed_amount numeric,
+  total_expenditure numeric
+)
+language sql
+security invoker
+set search_path = public
+as $$
+  with source_rows as (
+    select
+      coalesce(sanctioned_amount, spent_amount, 0)::numeric as allocation,
+      coalesce(spent_amount, 0)::numeric as expenditure,
+      lower(coalesce(status, '')) as status
+    from public.projects
+  )
+  select
+    coalesce(sum(allocation), 0),
+    0::numeric,
+    count(*) filter (where status ~ '(recommend|propos|submit|pending)'),
+    coalesce(sum(allocation) filter (where status ~ '(recommend|propos|submit|pending)'), 0),
+    count(*) filter (where status ~ '(sanction|approv|award|progress|complet|success)'),
+    coalesce(sum(allocation) filter (where status ~ '(sanction|approv|award|progress|complet|success)'), 0),
+    count(*) filter (where status ~ '(complet|success)'),
+    coalesce(sum(expenditure) filter (where status ~ '(complet|success)'), 0),
+    coalesce(sum(expenditure), 0)
+  from source_rows;
+$$;
+
+grant execute on function public.get_public_citizen_summary() to anon, authenticated;
+
+-- The proposals table is optional in older installations. When present, make
+-- it explicitly public-read and publish it for Supabase Realtime so DPO/CVD
+-- changes are visible to the citizen register without a hard refresh.
+do $$
+begin
+  if to_regclass('public.proposals') is not null then
+    execute 'alter table public.proposals enable row level security';
+    execute 'drop policy if exists "public_read_proposals" on public.proposals';
+    execute 'create policy "public_read_proposals" on public.proposals for select to anon, authenticated using (true)';
+    execute 'grant select on public.proposals to anon, authenticated';
+    begin
+      execute 'alter publication supabase_realtime add table public.proposals';
+    exception when duplicate_object then
+      null;
+    end;
+  end if;
+end $$;
