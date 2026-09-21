@@ -125,7 +125,7 @@ type ModuleId =
 
 export default function MpladRadarDashboard() {
   const [activeHouse, setActiveHouse] = useState<HouseFilter>('ALL');
-  const { projects, analytics, summary, highRiskCount, riskQueue, loading, error, live, recordCount, reload } = useProjects(activeHouse);
+  const { projects, analytics, summary, highRiskCount, riskQueue, loading, error, live, recordCount, loadMore, loadingMore, reload } = useProjects(activeHouse);
   const { isMuted } = useTheme();
   const { lang: language, setLang, t } = useLang();
   const { user, isRestrictedForCitizen, setRestrictedAlert, setSwitchModalOpen, canAccessOfficerModules, canAccessAdminOnly } = useAuth();
@@ -244,8 +244,12 @@ export default function MpladRadarDashboard() {
     setHouseFilter(activeHouse === 'ALL' ? 'All Houses' : activeHouse === 'LOK_SABHA' ? 'Lok Sabha' : 'Rajya Sabha');
   }, [activeHouse]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredProjects.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(Math.max(filteredProjects.length, recordCount) / PAGE_SIZE));
   const pagedProjects = filteredProjects.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const handleProjectPageChange = (nextPage: number) => {
+    setPage(nextPage);
+    if (nextPage * PAGE_SIZE > projects.length && projects.length < recordCount) void loadMore();
+  };
 
   const highRiskRows = useMemo(
     () => riskQueue ?? scopedProjects.filter((p) => (p.risk_score || 0) >= 80),
@@ -698,8 +702,9 @@ export default function MpladRadarDashboard() {
                       page={page}
                       totalPages={totalPages}
                       totalItems={filteredProjects.length}
+                      loadingMore={loadingMore}
                       overallItems={recordCount || projects.length}
-                      onPageChange={setPage}
+                      onPageChange={handleProjectPageChange}
                     />
                   </section>
                 )}
@@ -1158,17 +1163,19 @@ function PaginationFooter({
   totalItems,
   overallItems,
   onPageChange,
+  loadingMore = false,
 }: {
   page: number;
   totalPages: number;
   totalItems: number;
   overallItems: number;
   onPageChange: (page: number) => void;
+  loadingMore?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-3 text-[11px] dark:border-white/[0.08] sm:flex-row sm:items-center sm:justify-between">
       <div className="text-slate-500">Page {page} of {totalPages} ({overallItems.toLocaleString('en-IN')} records)</div>
-      <div className="text-slate-400">Showing {Math.min(PAGE_SIZE, totalItems - (page - 1) * PAGE_SIZE)} items on this page</div>
+      <div className="text-slate-400">{loadingMore ? 'Loading next live Supabase page…' : `Showing ${Math.min(PAGE_SIZE, Math.max(0, totalItems - (page - 1) * PAGE_SIZE))} items on this page`}</div>
       <div className="flex items-center gap-2">
         <button
           disabled={page <= 1}

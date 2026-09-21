@@ -226,12 +226,12 @@ function lifecycleStep(project: Project): { label: string; step: number } {
 function normalizePublicProject(raw: Record<string, unknown>, index: number): Project {
   return {
     id: Number(raw.id) || index + 1,
-    house: String(raw.house ?? '') || null,
-    sr_no: String(raw.sr_no ?? '') || null,
+    house: String(raw.house ?? raw.house_type ?? raw.house_of_parliament ?? '') || null,
+    sr_no: String(raw.sr_no ?? raw.serial_no ?? raw['Sr. No.'] ?? '') || null,
     state: String(raw.state ?? raw.State ?? '') || null,
-    category: String(raw.category ?? '') || null,
-    work: String(raw.work_title ?? raw.work_name ?? raw.work ?? raw.Work ?? '') || null,
-    work_id: String(raw.work_id ?? raw['Work ID'] ?? '') || null,
+    category: String(raw.category ?? raw.work_category ?? '') || null,
+    work: String(raw.work_name ?? raw.project_title ?? raw.work_title ?? raw.work ?? raw.Work ?? '') || null,
+    work_id: String(raw.work_id ?? raw.project_id ?? raw['Work ID'] ?? '') || null,
     ida: String(raw.ida ?? '') || null,
     mp: String(raw.mp ?? '') || null,
     constituency: String(raw.constituency ?? '') || null,
@@ -325,7 +325,7 @@ export function CitizenPortal({
     const refreshPublicRegister = async () => {
       await refreshCitizenSummary();
       const [proposalResult, allocationResult, auditResult, feedbackResult] = await Promise.all([
-        supabase.from('proposals').select('*', { count: 'exact' }).range(0, 999),
+        supabase.from('proposals').select('*', { count: 'exact' }).order('id', { ascending: true }).range(0, 999),
         supabase.from('allocations').select('*').range(0, 9999),
         supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).range(0, 999),
         supabase.from('citizen_feedback').select('rating').not('rating', 'is', null).range(0, 9999),
@@ -343,6 +343,7 @@ export function CitizenPortal({
         setSatisfaction({ average: ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : 0, count: ratings.length });
       }
       if (!cancelled && !proposalResult.error && (proposalResult.data?.length || proposalResult.count)) {
+        console.info('[Supabase] proposals query', { count: proposalResult.count, returned: proposalResult.data?.length ?? 0, first: proposalResult.data?.[0] ?? null });
         setPublicSource('proposals');
         setPublicTotal(proposalResult.count ?? proposalResult.data?.length ?? 0);
         setPublicPage(1);
@@ -350,8 +351,11 @@ export function CitizenPortal({
         setPublicLoading(false);
         return;
       }
-      const projectResult = await supabase.from('projects').select('*', { count: 'exact' }).range(0, 999);
+      if (proposalResult.error) console.warn('[Supabase] proposals query failed; using live projects fallback', proposalResult.error);
+      const projectResult = await supabase.from('projects').select('*', { count: 'exact' }).order('id', { ascending: true }).range(0, 999);
+      if (projectResult.error) console.error('[Supabase] proposals query failed; projects fallback also failed', { proposals: proposalResult.error, projects: projectResult.error });
       if (!cancelled && !projectResult.error) {
+        console.info('[Supabase] projects public query', { count: projectResult.count, returned: projectResult.data?.length ?? 0, first: projectResult.data?.[0] ?? null });
         setPublicSource('projects');
         setPublicTotal(projectResult.count ?? projectResult.data?.length ?? 0);
         setPublicPage(1);

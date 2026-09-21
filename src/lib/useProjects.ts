@@ -26,6 +26,8 @@ export interface ProjectsState {
   error: string | null;
   live: boolean;
   recordCount: number;
+  loadMore: () => Promise<void>;
+  loadingMore: boolean;
   reload: () => void;
 }
 
@@ -52,6 +54,8 @@ export function useProjects(houseFilter: HouseFilter = 'ALL'): ProjectsState {
   const [error, setError] = useState<string | null>(null);
   const [live, setLive] = useState(false);
   const [recordCount, setRecordCount] = useState(0);
+  const [sourceTable, setSourceTable] = useState<'proposals' | 'projects'>('projects');
+  const [loadingMore, setLoadingMore] = useState(false);
   const [tick, setTick] = useState(0);
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
@@ -63,6 +67,7 @@ export function useProjects(houseFilter: HouseFilter = 'ALL'): ProjectsState {
       setLoading(true);
       setError(null);
       setLive(false);
+      setSourceTable('projects');
 
       if (!supabase || !isSupabaseConfigured) {
         if (!cancelled) {
@@ -100,8 +105,9 @@ export function useProjects(houseFilter: HouseFilter = 'ALL'): ProjectsState {
             // The dashboard can fall back to the visible page if this query fails.
           });
         let loaded = 0;
-        const total = await fetchAllProjects(houseFilter, (batch) => {
+        const total = await fetchAllProjects(houseFilter, (batch, table) => {
           if (cancelled) return;
+          setSourceTable(table);
           const normalized = batch.map((row, index) => normalizeProject(row, loaded + index));
           loaded += normalized.length;
           setProjects((current) => current.length === 0 ? normalized : [...current, ...normalized]);
@@ -132,8 +138,29 @@ export function useProjects(houseFilter: HouseFilter = 'ALL'): ProjectsState {
     };
   }, [tick, houseFilter]);
 
+  const loadMore = useCallback(async () => {
+    if (!supabase || loadingMore || projects.length >= recordCount) return;
+    setLoadingMore(true);
+    const start = projects.length;
+    try {
+      const { data, error } = await supabase
+        .from(sourceTable)
+        .select('*')
+        .order('id', { ascending: true })
+        .range(start, start + 999);
+      if (error) throw error;
+      const rows = (data || []) as SupabaseProjectRow[];
+      if (rows.length) setProjects((current) => [...current, ...rows.map((row, index) => normalizeProject(row, start + index))]);
+      console.info(`[Supabase] ${sourceTable} next page`, { start, returned: rows.length, first: rows[0] ?? null });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to load the next live data page.');
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, projects.length, recordCount, sourceTable]);
+
   const analytics = useMemo(() => computeLiveAnalytics(projects), [projects]);
-  return { projects, analytics, summary, highRiskCount, riskQueue, loading, error, live, recordCount, reload };
+  return { projects, analytics, summary, highRiskCount, riskQueue, loading, error, live, recordCount, loadMore, loadingMore, reload };
 }
 
 async function fetchRiskQueue(houseFilter: HouseFilter): Promise<SupabaseProjectRow[]> {
@@ -146,10 +173,11 @@ async function fetchRiskQueue(houseFilter: HouseFilter): Promise<SupabaseProject
   if (pattern) query = query.ilike('house', `%${pattern}%`);
   const { data, error } = await query
     .order('risk_score', { ascending: false })
-    .order('risk_score', { ascending: false })
+    .order('id', { ascending: true })
     .range(0, 49);
-  if (error) throw error;
-  return (data || []) as SupabaseProjectRow[];
+    if (error) throw error;
+    console.info('[Supabase] risk queue query', { returned: data?.length ?? 0, first: data?.[0] ?? null });
+    return (data || []) as SupabaseProjectRow[];
 }
 
 async function fetchHighRiskCount(houseFilter: HouseFilter): Promise<number> {
@@ -184,7 +212,7 @@ async function fetchMospiSummary(houseFilter: HouseFilter): Promise<MospiSummary
   };
 }
 
-async function fetchAllProjects(houseFilter: HouseFilter, onPage: (rows: SupabaseProjectRow[]) => void): Promise<number> {
+async function fetchAllProjects(houseFilter: HouseFilter, onPage: (rows: SupabaseProjectRow[], table: 'proposals' | 'projects') => void): Promise<number> {
   if (!supabase) return 0;
 
   const pageSize = 1000;
@@ -195,49 +223,56 @@ async function fetchAllProjects(houseFilter: HouseFilter, onPage: (rows: Supabas
     // Load only the first page. The exact total is returned by PostgREST count
     // metadata, while the summary RPC handles all-record aggregates. This keeps
     // the initial dashboard response small even with 118,018 projects.
-    let query = supabase
-      .from('projects')
-      .select('*', { count: 'exact' });
-    const pattern = housePattern(houseFilter);
-    if (pattern) query = query.ilike('house', `%${pattern}%`);
-    const { data, error, count } = await query
-      .range(0, pageSize - 1)
-      .abortSignal(controller.signal);
-
-    if (error) throw error;
-    const rows = (data || []) as SupabaseProjectRow[];
-    if (rows.length > 0) onPage(rows);
-    return count ?? rows.length;
+    let lastError: unknown = null;
+    for (const table of ['proposals', 'projects'] as const) {
+      let query = supabase.from(table).select('*', { count: 'exact' });
+      const pattern = housePattern(houseFilter);
+      if (pattern) query = query.ilike('house', `%${pattern}%`);
+      const result = await query
+        .order('id', { ascending: true })
+        .range(0, pageSize - 1)
+        .abortSignal(controller.signal);
+      if (result.error) {
+        lastError = result.error;
+        console.warn(`[Supabase] ${table} query failed; trying next live table`, result.error);
+        continue;
+      }
+      const rows = (result.data || []) as SupabaseProjectRow[];
+      console.info(`[Supabase] ${table} query`, { count: result.count, returned: rows.length, first: rows[0] ?? null });
+      if (rows.length > 0) onPage(rows, table);
+      return result.count ?? rows.length;
+    }
+    throw lastError instanceof Error ? lastError : new Error('Unable to query live proposals or projects.');
   } finally {
     window.clearTimeout(timeoutId);
   }
 }
 
 function normalizeProject(row: SupabaseProjectRow, index: number): Project {
-  const amount = numberValue(row.amount ?? row['Fund Disbursed Amount ( ₹ )']);
-  const riskScore = numberValue(row.risk_score ?? row['risk score'] ?? row['Risk Score']);
+  const amount = numberValue(row.amount ?? row.fund_disbursed ?? row.spent_amount ?? row['Fund Disbursed Amount ( ₹ )']);
+  const riskScore = numberValue(row.risk_score ?? row.risk ?? row['risk score'] ?? row['Risk Score']);
   const anomaly = anomalyValue(row.anomaly_type ?? row['Anomaly Type']);
 
   return {
-    id: numberValue(row.id) || index + 1,
-    house: houseValue(row.house ?? row.house_of_parliament ?? row.HOUSE_OF_PARLIAMENT ?? row['House of Parliament']),
+    id: numberValue(row.id) || stableNumericId(row.work_id ?? row.work_name ?? row.project_title ?? row.sr_no) || index + 1,
+    house: houseValue(row.house ?? row.house_type ?? row.house_of_parliament ?? row.HOUSE_OF_PARLIAMENT ?? row['House of Parliament']),
     sr_no: textValue(row.sr_no ?? row['Sr. No.']),
     state: textValue(row.state ?? row.State),
     category: textValue(row.category ?? row.Category),
-    work: textValue(row.work ?? row.work_title ?? row.Work ?? row.ACTIVITY_NAME),
-    work_id: textValue(row.work_id ?? row['Work ID']),
+    work: textValue(row.work_name ?? row.project_title ?? row.work_title ?? row.work ?? row.Work ?? row.ACTIVITY_NAME),
+    work_id: textValue(row.work_id ?? row.project_id ?? row['Work ID']),
     ida: textValue(row.ida ?? row.IDA),
     mp: textValue(row.mp ?? row.mp_name ?? row.MP_NAME ?? row["Hon'ble Members of Parliament"]),
-    constituency: textValue(row.constituency ?? row.Constituency ?? row.CONSTITUENCY_NAME),
+    constituency: textValue(row.constituency ?? row.constituency_name ?? row.Constituency ?? row.CONSTITUENCY_NAME),
     expenditure_date: textValue(row.expenditure_date ?? row['Expenditure Date']),
-    vendor_name: textValue(row.vendor_name ?? row['Vendor Name']),
+    vendor_name: textValue(row.vendor_name ?? row.executing_agency ?? row.vendor ?? row['Vendor Name']),
     payment_status: textValue(row.payment_status ?? row['Payment Status'] ?? row.status ?? row.Status),
     status: textValue(row.status ?? row.Status ?? row.payment_status ?? row['Payment Status']),
     stage: textValue(row.stage ?? row.Stage ?? row.project_stage ?? row['Project Stage']),
     latitude: numberValue(row.latitude ?? row.lat ?? row.Latitude ?? row.Lat),
     longitude: numberValue(row.longitude ?? row.lng ?? row.Longitude ?? row.Lng),
-    amount: amount ?? numberValue(row.spent_amount ?? row.sanctioned_amount ?? row['Fund Disbursed Amount ( ₹ )']),
-    allocated_amount: numberValue(row.allocated_amount ?? row['Allocated Amount'] ?? row['Allocated AMOUNT (₹)']),
+    amount: amount ?? numberValue(row.fund_disbursed ?? row.spent_amount ?? row.sanctioned_amount ?? row['Fund Disbursed Amount ( ₹ )']),
+    allocated_amount: numberValue(row.allocated_amount ?? row.allocation_amount ?? row.budget_amount ?? row['Allocated Amount'] ?? row['Allocated AMOUNT (₹)']),
     sanctioned_amount: numberValue(row.sanctioned_amount ?? row['Sanctioned Amount'] ?? row['Sanctioned AMOUNT (₹)'] ?? row.RECOMMENDED_AMOUNT ?? row.SANCTIONED_AMOUNT),
     risk_score: riskScore,
     anomaly_type: anomaly,
@@ -246,6 +281,14 @@ function normalizeProject(row: SupabaseProjectRow, index: number): Project {
     delay_days: numberValue(row.delay_days),
     completion_percent: numberValue(row.completion_percent),
   };
+}
+
+function stableNumericId(value: unknown): number | null {
+  const text = textValue(value);
+  if (!text) return null;
+  let hash = 0;
+  for (let index = 0; index < text.length; index += 1) hash = ((hash << 5) - hash + text.charCodeAt(index)) | 0;
+  return Math.abs(hash) || null;
 }
 
 function houseValue(value: unknown): Project['house'] {
