@@ -1129,7 +1129,7 @@ function ProjectTable({
                 ) : statusLabel(project)}
               </td>
               <td className="px-3 py-3 font-semibold">{formatINR(project.amount || 0)}</td>
-              <td className="px-3 py-3"><RiskBadge score={project.risk_score || 0} /></td>
+              <td className="px-3 py-3"><div className="flex flex-col items-start gap-1"><RiskBadge score={project.risk_score || 0} />{project.anomaly_tag && <span className="max-w-[150px] truncate text-[9px] font-bold text-rose-300" title={project.anomaly_tag}>{project.anomaly_tag}</span>}</div></td>
               <td className="px-4 py-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <button onClick={() => onInspect(project)} className="rounded-md border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-200">Inspect</button>

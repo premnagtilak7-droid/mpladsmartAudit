@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase, isSupabaseConfigured } from './supabase';
 import type { Analytics, AnomalyType, Project, RiskDriver } from './types';
 import { buildMockProjects } from './mockData';
+import { anomalyTagForScore, anomalyTypeForScore } from './risk';
 
 export interface MospiSummary {
   allocated_limit: number;
@@ -264,7 +265,7 @@ async function fetchAllProjects(houseFilter: HouseFilter, onPage: (rows: Supabas
 function normalizeProject(row: SupabaseProjectRow, index: number): Project {
   const amount = numberValue(row.amount ?? row.fund_disbursed ?? row.spent_amount ?? row['Fund Disbursed Amount ( ₹ )']);
   const riskScore = numberValue(row.risk_score ?? row.risk ?? row['risk score'] ?? row['Risk Score']);
-  const anomaly = anomalyValue(row.anomaly_type ?? row['Anomaly Type']);
+  const anomaly = anomalyValue(row.anomaly_type ?? row['Anomaly Type']) ?? anomalyTypeForScore(riskScore);
 
   return {
     id: numberValue(row.id) || stableNumericId(row.work_id ?? row.work_name ?? row.project_title ?? row.sr_no) || index + 1,
@@ -289,6 +290,7 @@ function normalizeProject(row: SupabaseProjectRow, index: number): Project {
     sanctioned_amount: numberValue(row.sanctioned_amount ?? row['Sanctioned Amount'] ?? row['Sanctioned AMOUNT (₹)'] ?? row.RECOMMENDED_AMOUNT ?? row.SANCTIONED_AMOUNT),
     risk_score: riskScore,
     anomaly_type: anomaly,
+    anomaly_tag: textValue(row.anomaly_tag) ?? anomalyTagForScore(riskScore),
     risk_drivers: riskDrivers(row.risk_drivers),
     approval_status: textValue(row.approval_status) ?? undefined,
     delay_days: numberValue(row.delay_days),

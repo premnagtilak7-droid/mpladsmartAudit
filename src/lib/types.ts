@@ -61,6 +61,8 @@ export interface Project {
   // --- Risk enrichment (added by migration / server) ---
   risk_score: number | null;
   anomaly_type: AnomalyType | null;
+  /** Frontend-derived explanation when the imported schema omits anomaly_type. */
+  anomaly_tag?: string | null;
   risk_drivers?: RiskDriver[];
 
   // --- Workflow enrichment (DM / Citizen views) ---

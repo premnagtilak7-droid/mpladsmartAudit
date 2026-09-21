@@ -28,6 +28,7 @@ import {
 import type { AuditResponse, Project } from '@/lib/types';
 import type { MospiSummary } from '@/lib/useProjects';
 import { supabase } from '@/lib/supabase';
+import { anomalyTagForScore, anomalyTypeForScore } from '@/lib/risk';
 import { formatCroreCurrency, formatCrores, formatINR } from '@/lib/format';
 import { useLang } from '@/lib/i18n/LangContext';
 import type { MapAsset } from './AssetMap';
@@ -206,6 +207,7 @@ function Button({
 
 function publicAnomalyReasons(project: Project): string[] {
   const reasons = new Set<string>();
+  if (project.anomaly_tag) reasons.add(project.anomaly_tag);
   if (project.anomaly_type && project.anomaly_type !== 'Normal') reasons.add(project.anomaly_type);
   for (const driver of project.risk_drivers || []) {
     if (driver.note) reasons.add(driver.note);
@@ -255,7 +257,8 @@ function normalizePublicProject(raw: Record<string, unknown>, index: number): Pr
     allocated_amount: Number(raw.allocated_amount ?? raw.allocation_amount ?? raw.budget_amount) || null,
     sanctioned_amount: Number(raw.sanctioned_amount) || null,
     risk_score: Number(raw.risk_score ?? raw.risk ?? raw['risk score']) || 0,
-    anomaly_type: raw.anomaly_type as Project['anomaly_type'] || null,
+    anomaly_type: raw.anomaly_type as Project['anomaly_type'] || anomalyTypeForScore(Number(raw.risk_score ?? raw.risk ?? raw['risk score']) || 0),
+    anomaly_tag: String(raw.anomaly_tag ?? '') || anomalyTagForScore(Number(raw.risk_score ?? raw.risk ?? raw['risk score']) || 0),
     stage: String(raw.stage ?? raw.milestone ?? raw.lifecycle_stage ?? '') || null,
     approval_status: String(raw.approval_status ?? raw.approvalState ?? '') || undefined,
     delay_days: Number(raw.delay_days ?? raw.days_delayed) || null,
