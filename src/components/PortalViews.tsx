@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Camera,
   CheckCircle2,
@@ -26,6 +26,8 @@ import {
   Check,
 } from 'lucide-react';
 import type { AuditResponse, Project } from '@/lib/types';
+import type { MospiSummary } from '@/lib/useProjects';
+import { supabase } from '@/lib/supabase';
 import { formatCrores, formatINR } from '@/lib/format';
 import { useLang } from '@/lib/i18n/LangContext';
 import type { MapAsset } from './AssetMap';
@@ -206,10 +208,14 @@ export function CitizenPortal({
   projects,
   language,
   verifyId,
+  summary,
+  recordCount,
 }: {
   projects: Project[];
   language: PortalLanguage;
   verifyId?: string;
+  summary?: MospiSummary | null;
+  recordCount?: number;
 }) {
   const { t: translate } = useLang();
   const t = makePortalCopy(translate);
@@ -225,9 +231,53 @@ export function CitizenPortal({
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [query, setQuery] = useState('');
   const [riskFilter, setRiskFilter] = useState<'all' | 'high' | 'medium' | 'normal'>('all');
+  const [liveProjects, setLiveProjects] = useState<Project[]>(projects);
   const [evidenceProject, setEvidenceProject] = useState<Project | null>(null);
   const [scorecardOpen, setScorecardOpen] = useState(false);
   const [whistleblowerOpen, setWhistleblowerOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const normalizePublicRow = (raw: Record<string, unknown>, index: number): Project => ({
+      id: Number(raw.id) || index + 1,
+      house: String(raw.house ?? '') || null,
+      sr_no: String(raw.sr_no ?? '') || null,
+      state: String(raw.state ?? raw.State ?? '') || null,
+      category: String(raw.category ?? '') || null,
+      work: String(raw.work_title ?? raw.work_name ?? raw.work ?? raw.Work ?? '') || null,
+      work_id: String(raw.work_id ?? raw['Work ID'] ?? '') || null,
+      ida: String(raw.ida ?? '') || null,
+      mp: String(raw.mp ?? '') || null,
+      constituency: String(raw.constituency ?? '') || null,
+      expenditure_date: String(raw.expenditure_date ?? '') || null,
+      vendor_name: String(raw.vendor_name ?? raw.vendor ?? '') || null,
+      payment_status: String(raw.payment_status ?? raw.status ?? '') || null,
+      status: String(raw.status ?? '') || null,
+      latitude: Number(raw.latitude) || null,
+      longitude: Number(raw.longitude) || null,
+      amount: Number(raw.spent_amount ?? raw.amount) || 0,
+      sanctioned_amount: Number(raw.sanctioned_amount) || null,
+      risk_score: Number(raw.risk_score) || 0,
+      anomaly_type: raw.anomaly_type as Project['anomaly_type'] || null,
+    });
+    const refreshPublicRegister = async () => {
+      const proposalResult = await supabase.from('proposals').select('*').range(0, 999);
+      if (!cancelled && !proposalResult.error && proposalResult.data?.length) {
+        setLiveProjects(proposalResult.data.map((row, index) => normalizePublicRow(row as Record<string, unknown>, index)));
+        return;
+      }
+      const projectResult = await supabase.from('projects').select('*').range(0, 999);
+      if (!cancelled && !projectResult.error && projectResult.data?.length) setLiveProjects(projectResult.data.map((row, index) => normalizePublicRow(row as Record<string, unknown>, index)));
+    };
+    void refreshPublicRegister();
+    const channel = supabase.channel('public-transparency-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => void refreshPublicRegister())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'proposals' }, () => void refreshPublicRegister())
+      .subscribe();
+    return () => { cancelled = true; void supabase.removeChannel(channel); };
+  }, [projects]);
+
+  const citizenProjects = liveProjects.length ? liveProjects : projects;
 
   // Handle Geolocation trigger
   const handleUseLocation = () => {
@@ -259,7 +309,7 @@ export function CitizenPortal({
   // Dynamic public search and risk filtering over the visible live dataset.
   const filteredProjects = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return projects.filter((p) => {
+    return citizenProjects.filter((p) => {
       const score = Number(p.risk_score) || 0;
       const matchesRisk = riskFilter === 'all'
         || (riskFilter === 'high' && score >= 80)
@@ -273,7 +323,7 @@ export function CitizenPortal({
         .toLowerCase()
         .includes(q);
     });
-  }, [projects, query, riskFilter]);
+  }, [citizenProjects, query, riskFilter]);
 
   // Generate mapped markers
   const nearby = useMemo<MapAsset[]>(() => {
@@ -284,13 +334,13 @@ export function CitizenPortal({
     }));
   }, [filteredProjects]);
 
-  const completed = projects.filter((p) =>
+  const completed = citizenProjects.filter((p) =>
     /completed|success/i.test(`${p.status || ''} ${p.payment_status || ''}`)
   );
   const verifiedProject = verifyId
-    ? projects.find((p) => p.work_id === verifyId || String(p.id) === verifyId)
+    ? citizenProjects.find((p) => p.work_id === verifyId || String(p.id) === verifyId)
     : null;
-  const inProgress = projects.filter((p) =>
+  const inProgress = citizenProjects.filter((p) =>
     /progress|ongoing/i.test(`${p.status || ''} ${p.payment_status || ''}`)
   );
 
@@ -320,7 +370,7 @@ export function CitizenPortal({
           </Button>
           <Button
             onClick={() => {
-              setFeedbackProject(selected || projects[0] || null);
+              setFeedbackProject(selected || citizenProjects[0] || null);
               setFeedbackOpen(true);
             }}
           >
@@ -338,7 +388,7 @@ export function CitizenPortal({
 
       <section className="mb-6 grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Verified assets in view</div><div className="mt-2 text-2xl font-black text-emerald-200">{filteredProjects.length.toLocaleString('en-IN')}</div><div className="text-[10px] text-slate-400">Public register results</div></div>
-        <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Open transparency reports</div><div className="mt-2 text-2xl font-black text-rose-200">{projects.filter((p) => (Number(p.risk_score) || 0) >= 40).length.toLocaleString('en-IN')}</div><div className="text-[10px] text-slate-400">Medium/high risk records</div></div>
+        <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Open transparency reports</div><div className="mt-2 text-2xl font-black text-rose-200">{citizenProjects.filter((p) => (Number(p.risk_score) || 0) >= 40).length.toLocaleString('en-IN')}</div><div className="text-[10px] text-slate-400">Medium/high risk records</div></div>
         <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Community satisfaction</div><div className="mt-2 text-2xl font-black text-amber-200">4.2 <span className="text-sm">/ 5</span></div><div className="text-[10px] text-slate-400">Public review signal</div></div>
       </section>
 
@@ -456,8 +506,8 @@ export function CitizenPortal({
             </div>
 
             <div className="mt-4 grid gap-2">
-              <Button variant="secondary" onClick={() => setQrProject(selected || projects[0] || null)} className="w-full border-cyan-500/40 text-cyan-200 hover:bg-cyan-950/40"><QrCode size={14} className="text-cyan-400" /> Generate & Inspect Asset QR Code</Button>
-              <Button variant="secondary" onClick={() => setEvidenceProject(selected || projects[0] || null)} className="w-full"><Camera size={14} /> Report Site Evidence</Button>
+              <Button variant="secondary" onClick={() => setQrProject(selected || citizenProjects[0] || null)} className="w-full border-cyan-500/40 text-cyan-200 hover:bg-cyan-950/40"><QrCode size={14} className="text-cyan-400" /> Generate & Inspect Asset QR Code</Button>
+              <Button variant="secondary" onClick={() => setEvidenceProject(selected || citizenProjects[0] || null)} className="w-full"><Camera size={14} /> Report Site Evidence</Button>
               <Button variant="secondary" onClick={() => setScorecardOpen(true)} className="w-full"><FileText size={14} /> Constituency Scorecard</Button>
             </div>
           </Panel>
@@ -471,10 +521,10 @@ export function CitizenPortal({
               <button
                 type="button"
                 onClick={() => {
-                  setFeedbackProject(selected || projects[0] || null);
-                  setFeedbackOpen(true);
-                }}
-                className="text-[11px] font-bold text-indigo-400 hover:underline"
+              setFeedbackProject(selected || citizenProjects[0] || null);
+              setFeedbackOpen(true);
+            }}
+            className="text-[11px] font-bold text-indigo-400 hover:underline"
               >
                 + Rate work
               </button>
@@ -501,11 +551,11 @@ export function CitizenPortal({
               <FileText size={17} className="text-indigo-400" /> {t.openData}
             </div>
             <p className="mb-3 text-xs text-slate-400">
-              Download the active {projects.length.toLocaleString('en-IN')} constituency project records for open data auditing, research, or RTI filing.
+              Download the active {citizenProjects.length.toLocaleString('en-IN')} constituency project records for open data auditing, research, or RTI filing.
             </p>
             <div className="flex flex-wrap gap-2.5">
               <Button
-                onClick={() => downloadProjectCsv(filteredProjects.length ? filteredProjects : projects, 'mplads_open_data_audit.csv')}
+                onClick={() => downloadProjectCsv(filteredProjects.length ? filteredProjects : citizenProjects, 'mplads_open_data_audit.csv')}
                 className="flex-1"
               >
                 <Download size={14} /> {t.download}

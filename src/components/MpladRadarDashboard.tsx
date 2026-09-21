@@ -421,7 +421,7 @@ export default function MpladRadarDashboard() {
       />
 
       {role === 'citizen' ? (
-        <CitizenPortal projects={projects} language={language} verifyId={verifyId} />
+        <CitizenPortal projects={projects} summary={summary} recordCount={recordCount} language={language} verifyId={verifyId} />
       ) : role === 'authority' ? (
         <AuthorityWorkspace projects={projects} language={language} />
       ) : (
