@@ -99,6 +99,8 @@ export interface ScoreDatasetSummary {
   projects_scanned: number;
   projects_updated: number;
   high_risk: number;
+  moderate_risk?: number;
+  low_risk?: number;
   anomaly_signals_written: number;
 }
 
