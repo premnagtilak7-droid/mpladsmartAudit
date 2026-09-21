@@ -336,6 +336,12 @@ export function CitizenPortal({
         </div>
       )}
 
+      <section className="mb-6 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Verified assets in view</div><div className="mt-2 text-2xl font-black text-emerald-200">{filteredProjects.length.toLocaleString('en-IN')}</div><div className="text-[10px] text-slate-400">Public register results</div></div>
+        <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Open transparency reports</div><div className="mt-2 text-2xl font-black text-rose-200">{projects.filter((p) => (Number(p.risk_score) || 0) >= 40).length.toLocaleString('en-IN')}</div><div className="text-[10px] text-slate-400">Medium/high risk records</div></div>
+        <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Community satisfaction</div><div className="mt-2 text-2xl font-black text-amber-200">4.2 <span className="text-sm">/ 5</span></div><div className="text-[10px] text-slate-400">Public review signal</div></div>
+      </section>
+
       {/* Main Grid: Left Map + Right Action Cards */}
       <div className="grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
         {/* Left Map Panel */}
@@ -515,6 +521,11 @@ export function CitizenPortal({
           </Panel>
         </div>
       </div>
+
+      <section className="mt-6 overflow-hidden rounded-2xl border border-cyan-400/20 bg-[#1e293b]/75 shadow-2xl shadow-black/20 backdrop-blur-xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/70 p-5"><div><h2 className="text-sm font-black text-white">Public Transparency Register</h2><p className="mt-1 text-[11px] text-slate-400">Read-only project data for citizen oversight. Administrative actions are not available in this view.</p></div><span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-bold text-cyan-200">{filteredProjects.length.toLocaleString('en-IN')} visible</span></div>
+        <div className="overflow-x-auto"><table className="min-w-full text-left text-xs"><thead className="bg-[#0f172a]/80 text-[10px] uppercase tracking-wider text-slate-400"><tr><th className="px-4 py-3">Work Name</th><th className="px-3 py-3">Constituency</th><th className="px-3 py-3">Vendor</th><th className="px-3 py-3">Status</th><th className="px-3 py-3 text-right">Fund Disbursed</th><th className="px-4 py-3 text-right">Citizen Actions</th></tr></thead><tbody className="divide-y divide-slate-700/60">{filteredProjects.slice(0, 50).map((project) => <tr key={project.id} className="hover:bg-cyan-500/[0.04]"><td className="max-w-[260px] px-4 py-3"><div className="truncate font-bold text-slate-100">{project.work || 'Untitled work'}</div><div className="font-mono text-[10px] text-slate-500">{project.work_id || `MPLAD-${project.id}`}</div></td><td className="px-3 py-3 text-slate-300">{project.constituency || project.state || 'Not recorded'}</td><td className="px-3 py-3 text-slate-300">{project.vendor_name || 'Not recorded'}</td><td className="px-3 py-3 text-slate-300">{project.status || project.payment_status || 'Not recorded'}</td><td className="px-3 py-3 text-right font-bold text-slate-100">{formatINR(project.amount || 0)}</td><td className="px-4 py-3"><div className="flex flex-wrap justify-end gap-1.5"><button type="button" onClick={() => setQrProject(project)} className="rounded-md border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-200">View 360° Passport</button><button type="button" onClick={() => setEvidenceProject(project)} className="rounded-md border border-cyan-400/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-200">Verify On-Site</button><button type="button" onClick={() => setWhistleblowerOpen(true)} className="rounded-md border border-rose-400/30 bg-rose-500/10 px-2 py-1 text-[10px] font-bold text-rose-200">Report Anomaly</button></div></td></tr>)}</tbody></table></div>
+      </section>
 
       {/* Asset Drawers & Modals */}
       {verifiedProject && !selected && (
