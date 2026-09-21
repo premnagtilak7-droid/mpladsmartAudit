@@ -42,6 +42,9 @@ function createAssetIcon(asset: MapAsset, completed: boolean, highRisk: boolean)
 }
 
 // Pulsing user location icon
+const INDIA_CENTER: LatLngExpression = [20.5937, 78.9629];
+const INDIA_BOUNDS: [[number, number], [number, number]] = [[8, 68], [37, 97]];
+
 const userLocationIcon = typeof window !== 'undefined'
   ? L.divIcon({
       className: 'user-location-marker-wrapper',
@@ -137,11 +140,12 @@ export default function AssetMap({
     );
   }, [userLocation]);
 
-  const effectiveLocation = userLocation ?? browserLocation;
+  const requestedLocation = userLocation ?? browserLocation;
+  const effectiveLocation = requestedLocation && isValidIndiaCoordinate(requestedLocation.lat, requestedLocation.lng)
+    ? requestedLocation
+    : null;
   const visibleAssets = assets.filter((asset) => isValidIndiaCoordinate(asset.mapLat, asset.mapLng));
-  const center: LatLngExpression = effectiveLocation
-    ? [effectiveLocation.lat, effectiveLocation.lng]
-    : [18.5912, 73.7389];
+  const center: LatLngExpression = INDIA_CENTER;
   const cartoKey = process.env.NEXT_PUBLIC_CARTO_API_KEY || 'cb1_3h01_1_8b1ab8cc98b1a6acf0813486';
   const cartoAttribution = '&copy; OpenStreetMap &copy; CARTO';
 
@@ -152,9 +156,11 @@ export default function AssetMap({
     >
       <MapContainer
         center={center}
-        zoom={effectiveLocation ? 13 : 5}
-        minZoom={3}
+        zoom={5}
+        minZoom={5}
         maxZoom={18}
+        maxBounds={INDIA_BOUNDS}
+        maxBoundsViscosity={1}
         scrollWheelZoom={true}
         touchZoom={true}
         doubleClickZoom={true}
