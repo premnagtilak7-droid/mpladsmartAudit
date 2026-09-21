@@ -223,6 +223,16 @@ function lifecycleStep(project: Project): { label: string; step: number } {
   return { label: 'Sanctioned', step: 1 };
 }
 
+type PublicBreakdown = {
+  lok_sabha_works: number;
+  lok_sabha_allocation: number;
+  rajya_sabha_works: number;
+  rajya_sabha_allocation: number;
+  high_risk_works: number;
+  moderate_risk_works: number;
+  low_risk_works: number;
+};
+
 function normalizePublicProject(raw: Record<string, unknown>, index: number): Project {
   return {
     id: Number(raw.id) || index + 1,
@@ -288,6 +298,7 @@ export function CitizenPortal({
   const [liveProjects, setLiveProjects] = useState<Project[]>(projects);
   const [citizenSummary, setCitizenSummary] = useState<MospiSummary | null>(summary ?? null);
   const [citizenSummaryLoading, setCitizenSummaryLoading] = useState(true);
+  const [publicBreakdown, setPublicBreakdown] = useState<PublicBreakdown | null>(null);
   const [allocationTotal, setAllocationTotal] = useState(0);
   const [auditLogs, setAuditLogs] = useState<Array<Record<string, unknown>>>([]);
   const [satisfaction, setSatisfaction] = useState({ average: 0, count: 0 });
@@ -303,7 +314,22 @@ export function CitizenPortal({
   useEffect(() => {
     let cancelled = false;
     const refreshCitizenSummary = async () => {
-      const { data, error } = await supabase.rpc('get_public_citizen_summary');
+      const [{ data, error }, breakdownResult] = await Promise.all([
+        supabase.rpc('get_public_citizen_summary'),
+        supabase.rpc('get_public_citizen_breakdown'),
+      ]);
+      if (!cancelled && !breakdownResult.error) {
+        const breakdown = Array.isArray(breakdownResult.data) ? breakdownResult.data[0] : breakdownResult.data;
+        if (breakdown) setPublicBreakdown({
+          lok_sabha_works: Number(breakdown.lok_sabha_works) || 0,
+          lok_sabha_allocation: Number(breakdown.lok_sabha_allocation) || 0,
+          rajya_sabha_works: Number(breakdown.rajya_sabha_works) || 0,
+          rajya_sabha_allocation: Number(breakdown.rajya_sabha_allocation) || 0,
+          high_risk_works: Number(breakdown.high_risk_works) || 0,
+          moderate_risk_works: Number(breakdown.moderate_risk_works) || 0,
+          low_risk_works: Number(breakdown.low_risk_works) || 0,
+        });
+      }
       if (!cancelled && !error) {
         const row = Array.isArray(data) ? data[0] : data;
         if (row) {
@@ -381,6 +407,9 @@ export function CitizenPortal({
   const citizenProjects = liveProjects.length ? liveProjects : projects;
   const publicSummary = citizenSummary ?? summary;
   const publicAllocatedLimit = publicSummary?.allocated_limit || allocationTotal || 0;
+  const fullDatasetCount = publicTotal || recordCount || citizenProjects.length;
+  const publicHighRisk = publicBreakdown?.high_risk_works ?? citizenProjects.filter((project) => (project.risk_score || 0) > 75).length;
+  const publicModerateRisk = publicBreakdown?.moderate_risk_works ?? citizenProjects.filter((project) => (project.risk_score || 0) >= 40 && (project.risk_score || 0) <= 75).length;
   const metricValue = (value: number | undefined) => citizenSummaryLoading
     ? '—'
     : formatCrores(value || 0).replace(/\sCr$/, '');
@@ -463,11 +492,17 @@ export function CitizenPortal({
 
   const statusOptions = ['all', 'completed', 'in-progress'];
   const houseBreakdown = useMemo(() => {
+    if (publicBreakdown) {
+      return [
+        { house: 'Lok Sabha', count: publicBreakdown.lok_sabha_works, allocation: publicBreakdown.lok_sabha_allocation },
+        { house: 'Rajya Sabha', count: publicBreakdown.rajya_sabha_works, allocation: publicBreakdown.rajya_sabha_allocation },
+      ];
+    }
     return ['Lok Sabha', 'Rajya Sabha'].map((house) => {
       const rows = citizenProjects.filter((project) => String(project.house || '').toLowerCase().includes(house.toLowerCase()));
       return { house, count: rows.length, allocation: rows.reduce((sum, project) => sum + Number(project.allocated_amount ?? project.sanctioned_amount ?? project.amount ?? 0), 0) };
     });
-  }, [citizenProjects]);
+  }, [citizenProjects, publicBreakdown]);
   const registerRows = filteredProjects.slice((registerPage - 1) * 50, registerPage * 50);
   const registerPages = Math.max(1, Math.ceil(filteredProjects.length / 50));
 
@@ -546,8 +581,8 @@ export function CitizenPortal({
 
       {activeCitizenTab === 'overview' && <>
       <section className="mb-4 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Verified assets in view</div><div className="mt-2 text-2xl font-black text-emerald-200">{filteredProjects.length.toLocaleString('en-IN')}</div><div className="text-[10px] text-slate-400">Public register results</div></div>
-        <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Open transparency reports</div><div className="mt-2 text-2xl font-black text-rose-200">{citizenProjects.filter((p) => (Number(p.risk_score) || 0) >= 40).length.toLocaleString('en-IN')}</div><div className="text-[10px] text-slate-400">Medium/high risk records</div></div>
+        <div className="rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Verified assets in view</div><div className="mt-2 text-2xl font-black text-emerald-200">{fullDatasetCount.toLocaleString('en-IN')}</div><div className="text-[10px] text-slate-400">Unique live Supabase works</div></div>
+        <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Open transparency reports</div><div className="mt-2 text-2xl font-black text-rose-200">{(publicHighRisk + publicModerateRisk).toLocaleString('en-IN')}</div><div className="text-[10px] text-slate-400">Medium/high risk records</div></div>
         <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Community satisfaction</div><div className="mt-2 text-2xl font-black text-amber-200">{satisfaction.count ? satisfaction.average.toFixed(1) : '—'} <span className="text-sm">/ 5</span></div><div className="text-[10px] text-slate-400">{satisfaction.count.toLocaleString('en-IN')} live public reviews</div></div>
       </section>
 
@@ -782,7 +817,7 @@ export function CitizenPortal({
       )}
 
       {activeCitizenTab === 'register' && <section className="overflow-hidden rounded-2xl border border-cyan-400/20 bg-[#1e293b]/75 shadow-2xl shadow-black/20 backdrop-blur-xl">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/70 p-5"><div><h2 className="text-sm font-black text-white">Public Transparency Register</h2><p className="mt-1 text-[11px] text-slate-400">Read-only project data for citizen oversight. Administrative actions are not available in this view. Search and risk filters apply to the rows loaded so far.</p></div><span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-bold text-cyan-200">{filteredProjects.length.toLocaleString('en-IN')} of {publicTotal.toLocaleString('en-IN')} loaded</span></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/70 p-5"><div><h2 className="text-sm font-black text-white">Public Transparency Register</h2><p className="mt-1 text-[11px] text-slate-400">Read-only project data for citizen oversight. Administrative actions are not available in this view. Search and risk filters apply to the rows loaded so far.</p></div><span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-bold text-cyan-200">{publicTotal.toLocaleString('en-IN')} live works</span></div>
         <div className="grid gap-3 border-b border-slate-700/70 p-4 sm:grid-cols-[1fr_auto_auto_auto]">
           <div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search work, vendor, constituency, or Work ID…" className="w-full rounded-lg border border-slate-700 bg-[#0b132b] py-2 pl-8 pr-3 text-xs text-white outline-none focus:border-cyan-400" /></div>
           <select value={houseFilter} onChange={(event) => setHouseFilter(event.target.value as typeof houseFilter)} aria-label="Filter by house" className="rounded-lg border border-slate-700 bg-[#0b132b] px-3 py-2 text-xs font-bold text-slate-200"><option value="all">All houses</option><option value="Lok Sabha">Lok Sabha</option><option value="Rajya Sabha">Rajya Sabha</option></select>
@@ -791,12 +826,12 @@ export function CitizenPortal({
         </div>
         <div className="overflow-x-auto"><table className="min-w-full text-left text-xs"><thead className="bg-[#0f172a]/80 text-[10px] uppercase tracking-wider text-slate-400"><tr><th className="px-4 py-3">Work Name</th><th className="px-3 py-3">Constituency</th><th className="px-3 py-3">Vendor</th><th className="px-3 py-3">CVO Lifecycle / Flags</th><th className="px-3 py-3 text-right">Fund Disbursed</th><th className="px-3 py-3 text-right">Risk</th><th className="px-4 py-3 text-right">Citizen Actions</th></tr></thead><tbody className="divide-y divide-slate-700/60">{registerRows.map((project) => <tr key={project.id} className="hover:bg-cyan-500/[0.04]"><td className="max-w-[260px] px-4 py-3"><div className="truncate font-bold text-slate-100">{project.work || 'Untitled work'}</div><div className="font-mono text-[10px] text-slate-500">{project.work_id || `MPLAD-${project.id}`}</div></td><td className="px-3 py-3 text-slate-300">{project.constituency || project.state || 'Not recorded'}</td><td className="px-3 py-3 text-slate-300">{project.vendor_name || 'Not recorded'}</td><td className="min-w-[220px] px-3 py-3"><div className="flex items-center gap-1 text-slate-200"><span className="font-bold">{lifecycleStep(project).label}</span><span className="text-[10px] text-slate-500">• {project.status || project.payment_status || 'Not recorded'}</span></div><div className="mt-1 flex flex-wrap gap-1">{publicAnomalyReasons(project).map((reason) => <span key={reason} title={reason} className="max-w-[190px] truncate rounded border border-rose-400/20 bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-bold text-rose-200">{reason}</span>)}{publicAnomalyReasons(project).length === 0 && <span className="rounded border border-emerald-400/20 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-200">No active flags</span>}</div></td><td className="px-3 py-3 text-right font-bold text-slate-100">{formatINR(project.amount || 0)}</td><td className={`px-3 py-3 text-right font-black ${(project.risk_score || 0) > 75 ? 'text-rose-300' : (project.risk_score || 0) >= 40 ? 'text-amber-300' : 'text-emerald-300'}`}>{project.risk_score || 0}/100</td><td className="px-4 py-3"><div className="flex flex-wrap justify-end gap-1.5"><button type="button" onClick={() => setQrProject(project)} className="rounded-md border border-indigo-400/30 bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-200">View 360° Passport</button><button type="button" onClick={() => setEvidenceProject(project)} className="rounded-md border border-cyan-400/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold text-cyan-200">Verify On-Site</button><button type="button" onClick={() => setWhistleblowerOpen(true)} className="rounded-md border border-rose-400/30 bg-rose-500/10 px-2 py-1 text-[10px] font-bold text-rose-200">Report Anomaly</button></div></td></tr>)}</tbody></table></div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-700/70 p-4">
-          <span className="text-[11px] text-slate-400">Page {registerPage} of {registerPages} • {filteredProjects.length.toLocaleString('en-IN')} filtered rows loaded.</span>
+          <span className="text-[11px] text-slate-400">Page {registerPage} of {registerPages} • {publicTotal.toLocaleString('en-IN')} live records.</span>
           <div className="flex gap-2"><button type="button" onClick={() => setRegisterPage((page) => Math.max(1, page - 1))} disabled={registerPage === 1} className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-bold text-slate-300 disabled:opacity-40">Previous</button><button type="button" onClick={() => setRegisterPage((page) => Math.min(registerPages, page + 1))} disabled={registerPage >= registerPages} className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-bold text-slate-300 disabled:opacity-40">Next</button></div>
         </div>
         {publicTotal > liveProjects.length && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-700/70 p-4">
-            <span className="text-[11px] text-slate-400">Showing {liveProjects.length.toLocaleString('en-IN')} of {publicTotal.toLocaleString('en-IN')} live public records.</span>
+            <span className="text-[11px] text-slate-400">Live dataset: {publicTotal.toLocaleString('en-IN')} unique public records.</span>
             <button type="button" onClick={() => void loadMorePublicRows()} disabled={publicLoadingMore} className="rounded-lg border border-cyan-400/40 bg-cyan-500/10 px-3 py-2 text-[11px] font-black text-cyan-200 hover:bg-cyan-500/20 disabled:cursor-wait disabled:opacity-50">
               {publicLoadingMore ? 'Loading live records…' : 'Load next 1,000 records'}
             </button>

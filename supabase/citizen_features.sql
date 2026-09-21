@@ -150,6 +150,36 @@ $$;
 
 grant execute on function public.get_public_citizen_summary() to anon, authenticated;
 
+-- Full-dataset counts used by the Citizen cards. These are aggregate queries,
+-- not first-page browser counts, so 1,000-row PostgREST limits cannot distort
+-- the public dashboard.
+create or replace function public.get_public_citizen_breakdown()
+returns table (
+  lok_sabha_works bigint,
+  lok_sabha_allocation numeric,
+  rajya_sabha_works bigint,
+  rajya_sabha_allocation numeric,
+  high_risk_works bigint,
+  moderate_risk_works bigint,
+  low_risk_works bigint
+)
+language sql
+security invoker
+set search_path = public
+as $$
+  select
+    count(*) filter (where lower(coalesce(house, '')) like '%lok%'),
+    coalesce(sum(coalesce(sanctioned_amount, spent_amount, 0)) filter (where lower(coalesce(house, '')) like '%lok%'), 0),
+    count(*) filter (where lower(coalesce(house, '')) like '%rajya%'),
+    coalesce(sum(coalesce(sanctioned_amount, spent_amount, 0)) filter (where lower(coalesce(house, '')) like '%rajya%'), 0),
+    count(*) filter (where coalesce(risk_score, 0) > 75),
+    count(*) filter (where coalesce(risk_score, 0) between 40 and 75),
+    count(*) filter (where coalesce(risk_score, 0) < 40)
+  from public.projects;
+$$;
+
+grant execute on function public.get_public_citizen_breakdown() to anon, authenticated;
+
 -- The proposals table is optional in older installations. When present, make
 -- it explicitly public-read and publish it for Supabase Realtime so DPO/CVD
 -- changes are visible to the citizen register without a hard refresh.
