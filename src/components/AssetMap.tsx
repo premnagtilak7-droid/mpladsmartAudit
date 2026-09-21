@@ -26,8 +26,24 @@ type LeafletWithHeat = typeof L & {
   heatLayer: (points: Array<[number, number, number]>, options?: Record<string, unknown>) => L.Layer;
 };
 
+const INDIA_LAND_POLYGON: Array<[number, number]> = [
+  [8.0, 77.0], [8.5, 76.0], [11.0, 74.0], [15.0, 72.5], [19.0, 68.5],
+  [23.0, 68.0], [27.0, 70.0], [31.0, 73.5], [35.5, 74.5], [37.0, 77.0],
+  [35.5, 79.5], [36.5, 82.5], [35.0, 87.0], [32.0, 89.0], [28.0, 89.5],
+  [27.0, 94.0], [25.0, 97.0], [21.0, 95.0], [18.0, 94.0], [14.0, 90.0],
+  [10.0, 84.0],
+];
+
 function isValidIndiaCoordinate(lat: number, lng: number) {
-  return Number.isFinite(lat) && Number.isFinite(lng) && lat >= 8 && lat <= 37 && lng >= 68 && lng <= 97;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < 8 || lat > 37 || lng < 68 || lng > 97) return false;
+  let inside = false;
+  for (let index = 0, previous = INDIA_LAND_POLYGON.length - 1; index < INDIA_LAND_POLYGON.length; previous = index++) {
+    const [currentLat, currentLng] = INDIA_LAND_POLYGON[index];
+    const [previousLat, previousLng] = INDIA_LAND_POLYGON[previous];
+    const intersects = ((currentLng > lng) !== (previousLng > lng)) && (lat < (previousLat - currentLat) * (lng - currentLng) / (previousLng - currentLng) + currentLat);
+    if (intersects) inside = !inside;
+  }
+  return inside;
 }
 
 function createAssetIcon(asset: MapAsset, completed: boolean, highRisk: boolean) {
