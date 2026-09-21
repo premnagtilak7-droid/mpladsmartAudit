@@ -244,8 +244,13 @@ function normalizePublicProject(raw: Record<string, unknown>, index: number): Pr
     amount: Number(raw.fund_disbursed ?? raw.spent_amount ?? raw.amount ?? raw.expenditure) || 0,
     allocated_amount: Number(raw.allocated_amount ?? raw.allocation_amount ?? raw.budget_amount) || null,
     sanctioned_amount: Number(raw.sanctioned_amount) || null,
-    risk_score: Number(raw.risk_score) || 0,
+    risk_score: Number(raw.risk_score ?? raw.risk ?? raw['risk score']) || 0,
     anomaly_type: raw.anomaly_type as Project['anomaly_type'] || null,
+    stage: String(raw.stage ?? raw.milestone ?? raw.lifecycle_stage ?? '') || null,
+    approval_status: String(raw.approval_status ?? raw.approvalState ?? '') || undefined,
+    delay_days: Number(raw.delay_days ?? raw.days_delayed) || null,
+    completion_percent: Number(raw.completion_percent ?? raw.progress_percent) || null,
+    risk_drivers: Array.isArray(raw.risk_drivers) ? raw.risk_drivers as Project['risk_drivers'] : undefined,
   };
 }
 
