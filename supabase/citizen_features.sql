@@ -26,7 +26,56 @@ create table if not exists public.citizen_feedback (
 );
 
 alter table public.citizen_verifications enable row level security;
+alter table public.citizen_feedback add column if not exists rating integer check (rating between 1 and 5);
+
+-- Optional public ledgers used by the citizen portal. These definitions are
+-- additive: existing operator schemas keep their data and gain the public-read
+-- contract only when the columns are absent.
+create table if not exists public.allocations (
+  id uuid primary key default gen_random_uuid(),
+  project_id text,
+  allocated_amount numeric(20, 2),
+  allocation_amount numeric(20, 2),
+  budget_amount numeric(20, 2),
+  limit_amount numeric(20, 2),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  project_id text,
+  work_id text,
+  action_taken text,
+  event_type text,
+  sha256_hash text,
+  immutable_hash text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.allocations enable row level security;
+alter table public.audit_logs enable row level security;
 alter table public.citizen_feedback enable row level security;
+
+drop policy if exists "public_read_allocations" on public.allocations;
+create policy "public_read_allocations" on public.allocations for select to anon, authenticated using (true);
+drop policy if exists "public_read_audit_logs" on public.audit_logs;
+create policy "public_read_audit_logs" on public.audit_logs for select to anon, authenticated using (true);
+
+grant select on public.allocations, public.audit_logs to anon, authenticated;
+
+-- Realtime publication is idempotent through duplicate_object handling below.
+do $$
+declare
+  _table text;
+begin
+  foreach _table in array array['allocations', 'audit_logs', 'citizen_feedback'] loop
+    begin
+      execute format('alter publication supabase_realtime add table public.%I', _table);
+    exception when duplicate_object then
+      null;
+    end;
+  end loop;
+end $$;
 
 drop policy if exists "public_insert_citizen_verifications" on public.citizen_verifications;
 create policy "public_insert_citizen_verifications"
@@ -79,9 +128,15 @@ as $$
       coalesce(spent_amount, 0)::numeric as expenditure,
       lower(coalesce(status, '')) as status
     from public.projects
+  ), allocation_rows as (
+    select coalesce(allocated_amount, allocation_amount, budget_amount, limit_amount, 0)::numeric as allocation
+    from public.allocations
   )
   select
-    coalesce(sum(allocation), 0),
+    case when (select count(*) from allocation_rows) > 0
+      then coalesce((select sum(allocation) from allocation_rows), 0)
+      else coalesce(sum(allocation), 0)
+    end,
     0::numeric,
     count(*) filter (where status ~ '(recommend|propos|submit|pending)'),
     coalesce(sum(allocation) filter (where status ~ '(recommend|propos|submit|pending)'), 0),
